@@ -1,0 +1,7 @@
+{
+  "name": "bright-steps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Adaptive early-years learning web app (ages 4-7, UK EYFS/KS1)"
+}

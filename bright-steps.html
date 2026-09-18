@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bright Steps — Learn Your Way</title>
+<style>
+/* ---- Bright Steps — child-friendly UI ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "Comic Sans MS", "Chalkboard SE", "Segoe UI Rounded", "Trebuchet MS", sans-serif;
+  background: linear-gradient(160deg, #fff6e9 0%, #ffe9f3 50%, #e9f4ff 100%);
+  min-height: 100vh;
+  color: #333;
+}
+.app { max-width: 900px; margin: 0 auto; padding: 16px 20px 60px; }
+
+h1.app-title { text-align: center; font-size: 2.2rem; margin: 10px 0 2px; color: #5f27cd; }
+.tagline { text-align: center; color: #777; margin: 0 0 18px; }
+.greeting { text-align: center; font-size: 1.3rem; margin: 6px 0 14px; color: #444; }
+
+/* buttons */
+.btn {
+  font-family: inherit; border: none; cursor: pointer; border-radius: 16px;
+  padding: 12px 22px; font-size: 1.1rem; background: #5f27cd; color: #fff;
+  box-shadow: 0 4px 0 #431b96; transition: transform .08s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #431b96; }
+.btn.secondary { background: #fff; color: #5f27cd; box-shadow: 0 4px 0 #d9c8f5; }
+.btn-row { display: flex; gap: 12px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+.smart-btn { display: block; margin: 0 auto 20px; font-size: 1.3rem; padding: 16px 34px; background: #ff9f43; box-shadow: 0 4px 0 #cc7a1e; }
+
+/* home */
+.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.skill-card {
+  background: #fff; border-radius: 22px; padding: 20px; cursor: pointer; text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.08); border-top: 10px solid var(--c, #5f27cd);
+  transition: transform .12s;
+}
+.skill-card:hover { transform: translateY(-4px) scale(1.02); }
+.skill-icon { font-size: 3rem; }
+.skill-name { font-size: 1.4rem; font-weight: bold; margin: 6px 0 2px; }
+.skill-level { color: #777; font-size: .95rem; }
+.parent-link { text-align: center; margin-top: 26px; }
+
+/* session chrome */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.home-btn { font-size: 1.6rem; background: #fff; border: none; border-radius: 14px; padding: 6px 12px; cursor: pointer; box-shadow: 0 3px 0 #ddd; }
+.session-title { font-size: 1.3rem; font-weight: bold; }
+.round-pill { background: #fff; border-radius: 999px; padding: 8px 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+.method-tag-wrap { text-align: center; }
+.method-tag { display: inline-block; background: #fff; padding: 6px 16px; border-radius: 999px; color: #666; margin: 4px auto 14px; font-size: .95rem; }
+
+/* prompt area */
+.prompt { text-align: center; margin: 10px 0 22px; }
+.prompt-text { font-size: 1.5rem; margin-top: 10px; color: #444; }
+.big-letter { font-size: 5rem; font-weight: bold; color: #5f27cd; }
+.word { font-size: 3.4rem; font-weight: bold; letter-spacing: 4px; color: #2e86de; }
+.emoji-row { font-size: 2.6rem; line-height: 1.4; max-width: 640px; margin: 0 auto; }
+.sentence-card { background: #fff; border-radius: 18px; padding: 18px 22px; font-size: 2rem; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.speaker { font-size: 1.6rem; background: #ffe9a8; border: none; border-radius: 50%; width: 56px; height: 56px; cursor: pointer; margin-left: 10px; vertical-align: middle; box-shadow: 0 3px 0 #e0c36a; }
+.speaker:active { transform: scale(.92); }
+.speaker.big { width: 88px; height: 88px; font-size: 2.6rem; display: block; margin: 0 auto; }
+
+/* choice */
+.options { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.option {
+  font-family: inherit; font-size: 2rem; min-width: 110px; min-height: 96px; padding: 14px 22px;
+  border-radius: 20px; border: 4px solid #eee; background: #fff; cursor: pointer;
+  box-shadow: 0 5px 0 #ddd; transition: transform .08s;
+}
+.option:hover { transform: scale(1.05); }
+.option.correct { background: #c8f7c5; border-color: #2ecc71; animation: pop .4s; }
+.option.wrong { background: #ffd6d6; border-color: #ee5253; animation: shake .4s; }
+.option.word-option { font-size: 1.7rem; letter-spacing: 2px; }
+.option .swatch { display: block; width: 64px; height: 64px; border-radius: 50%; margin: 0 auto; border: 3px solid rgba(0,0,0,.15); }
+.swatch-option { min-width: 96px; }
+
+/* match */
+.match-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 520px; margin: 0 auto; }
+.match-card {
+  min-height: 110px; border-radius: 18px; border: 4px solid #eee; background: #fff; cursor: pointer;
+  font-size: 2.2rem; display: flex; align-items: center; justify-content: center; padding: 8px;
+  box-shadow: 0 4px 0 #ddd; font-family: inherit;
+}
+.match-card.selected { border-color: #5f27cd; background: #f0e8ff; }
+.match-card.matched { border-color: #2ecc71; background: #c8f7c5; animation: pop .4s; }
+.match-card.wrong { border-color: #ee5253; animation: shake .4s; }
+.match-card .mini { font-size: 1.2rem; }
+.sentence-mini { font-size: 1.05rem !important; line-height: 1.3; }
+
+/* hunt */
+.hunt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 520px; margin: 0 auto; }
+.hunt-tile {
+  min-height: 100px; font-size: 2.4rem; border-radius: 18px; border: 4px solid #eee; background: #fff;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 #ddd; font-family: inherit;
+}
+.hunt-tile.found { background: #c8f7c5; border-color: #2ecc71; animation: pop .35s; }
+.hunt-tile.missed { background: #eee; color: #bbb; animation: shake .35s; }
+.circle, .hunt-tile .swatch { width: 60px; height: 60px; border-radius: 50%; border: 3px solid rgba(0,0,0,.12); display: block; }
+
+/* build */
+.build-slots { display: flex; gap: 8px; justify-content: center; margin: 18px 0; flex-wrap: wrap; }
+.slot {
+  min-width: 56px; height: 64px; padding: 0 10px; border-radius: 12px; border: 3px dashed #bbb; background: #fff;
+  font-size: 1.7rem; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit;
+}
+.slot.filled { border-style: solid; border-color: #5f27cd; background: #f0e8ff; }
+.slot.correct { background: #c8f7c5; border-color: #2ecc71; }
+.slot.wrong { border-color: #ee5253; animation: shake .4s; }
+.tiles { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.tile {
+  min-width: 60px; height: 68px; font-size: 1.8rem; border-radius: 14px; border: none; background: #ffd166;
+  cursor: pointer; box-shadow: 0 4px 0 #e0a92f; font-family: inherit; padding: 0 14px;
+}
+.tile:disabled { opacity: .25; box-shadow: none; }
+
+/* feedback */
+.feedback-overlay {
+  position: fixed; inset: 0; background: rgba(255,255,255,.85); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 50; animation: fadein .15s;
+}
+.feedback-emoji { font-size: 6rem; animation: pop .5s; }
+.feedback-word { font-size: 2rem; font-weight: bold; color: #5f27cd; margin-top: 8px; }
+.level-up { font-size: 1.4rem; color: #e58e09; font-weight: bold; margin-top: 6px; }
+
+/* summary + dashboard */
+.summary-card, .dash-card { background: #fff; border-radius: 24px; padding: 26px; box-shadow: 0 8px 22px rgba(0,0,0,.08); max-width: 640px; margin: 0 auto 18px; }
+.summary-stars { font-size: 3rem; text-align: center; letter-spacing: 6px; }
+.summary-msg { text-align: center; font-size: 1.4rem; margin: 10px 0; }
+.method-chips { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.chip { background: #f4f4f8; border-radius: 999px; padding: 8px 16px; font-size: 1rem; }
+.dash-card { text-align: left; }
+.dash-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.dash-head .icon { font-size: 2rem; }
+.dash-head .name { font-size: 1.3rem; font-weight: bold; }
+.level-pill { margin-left: auto; background: #f0e8ff; color: #5f27cd; border-radius: 999px; padding: 6px 14px; font-size: .9rem; font-weight: bold; }
+.bar-row { display: grid; grid-template-columns: 160px 1fr 110px; align-items: center; gap: 10px; margin: 6px 0; }
+.bar { background: #eee; border-radius: 999px; height: 16px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #10ac84, #1dd1a1); }
+.bar-label { font-size: .9rem; color: #666; }
+.best-badge { color: #e58e09; }
+.dash-note { color: #777; font-size: .95rem; line-height: 1.5; }
+input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10px 14px; border-radius: 12px; border: 2px solid #ddd; }
+.settings-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+.confetti { position: fixed; top: -40px; font-size: 1.8rem; animation: fall linear forwards; z-index: 60; pointer-events: none; }
+
+/* profiles */
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin-top: 10px; }
+.profile-card { background: #fff; border-radius: 22px; padding: 22px 10px; text-align: center; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.08); border: 4px solid transparent; transition: transform .12s; }
+.profile-card:hover { transform: translateY(-4px); }
+.profile-card.add { border: 4px dashed #c9b3f0; color: #5f27cd; }
+.profile-avatar { font-size: 3.4rem; }
+.profile-name { font-size: 1.2rem; font-weight: bold; margin-top: 6px; }
+.profile-sub { color: #888; font-size: .85rem; }
+.avatar-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; justify-content: center; }
+.avatar-btn { font-size: 2rem; background: #fff; border: 3px solid #eee; border-radius: 14px; padding: 6px 10px; cursor: pointer; font-family: inherit; }
+.avatar-btn.selected { border-color: #5f27cd; background: #f0e8ff; }
+.switch-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: #5f27cd; text-decoration: underline; font-family: inherit; }
+.mini-btn { font-family: inherit; border: none; cursor: pointer; border-radius: 10px; padding: 6px 12px; background: #f0e8ff; color: #5f27cd; font-size: .9rem; }
+.btn.small { padding: 8px 14px; font-size: 1rem; }
+.profile-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f6; flex-wrap: wrap; }
+
+@keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fall { to { transform: translateY(105vh) rotate(360deg); } }
+
+</style>
+</head>
+<body>
+<div id="app" class="app"></div>
+<script>
+// ===== speech.js =====
+// Web Speech API wrapper — child-friendly en-GB voice where available.
+let voice = null;
+
+function pickVoice() {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  const vs = window.speechSynthesis.getVoices();
+  voice = vs.find(v => /en-GB/i.test(v.lang) && /female|google uk english female|kate|stephanie|serena/i.test(v.name))
+       || vs.find(v => /en-GB/i.test(v.lang))
+       || vs[0] || null;
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  pickVoice();
+  window.speechSynthesis.onvoiceschanged = pickVoice;
+}
+
+function speak(text, opts = {}) {
+  if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  if (voice) u.voice = voice;
+  u.lang = 'en-GB';
+  u.rate = opts.rate ?? 0.9;   // slightly slower for little ears
+  u.pitch = opts.pitch ?? 1.15;
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeak() {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+// ===== engine.js =====
+// Adaptive engine: multiple child profiles, each with its own stats and
+// progress. Tracks success per skill per learning method, chooses methods
+// weighted by success (with exploration), and moves levels up/down.
+
+const METHODS = ['look', 'hear', 'match', 'play'];
+const METHOD_META = {
+  look:  { name: 'Look & Find',   icon: '👀', blurb: 'Seeing and choosing' },
+  hear:  { name: 'Listen & Find', icon: '👂', blurb: 'Hearing and choosing' },
+  match: { name: 'Match It',      icon: '🧩', blurb: 'Matching pairs' },
+  play:  { name: 'Tap & Play',    icon: '🎈', blurb: 'Hands-on tapping games' },
+};
+
+const AVATARS = ['🦊', '🐰', '🦁', '🐸', '🐼', '🦄', '🐯', '🐧', '🦉', '🐳'];
+
+const KEY = 'brightsteps.v2';
+const OLD_KEY = 'brightsteps.v1'; // single-profile data from v1 is migrated
+
+// localStorage with an in-memory fallback (also makes the engine testable in Node/JSC)
+const mem = {};
+const store = typeof localStorage !== 'undefined'
+  ? localStorage
+  : { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
+
+function uid() { return 'p' + Math.random().toString(36).slice(2, 9); }
+
+function fresh() {
+  return { active: null, profiles: {}, settings: { override: null } };
+}
+
+function migrateV1(old) {
+  const id = uid();
+  return {
+    active: id,
+    profiles: {
+      [id]: {
+        id,
+        name: old.profile?.name || '',
+        avatar: AVATARS[0],
+        stats: old.stats || {},
+        progress: old.progress || {},
+        createdAt: Date.now(),
+      },
+    },
+    settings: old.settings || { override: null },
+  };
+}
+
+function load() {
+  try {
+    const s = JSON.parse(store.getItem(KEY));
+    if (s && s.profiles) return s;
+  } catch { /* fall through */ }
+  try {
+    const old = JSON.parse(store.getItem(OLD_KEY));
+    if (old && old.profile) {
+      const migrated = migrateV1(old);
+      store.setItem(KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+  } catch { /* fall through */ }
+  return fresh();
+}
+
+let state = load();
+function save() { store.setItem(KEY, JSON.stringify(state)); }
+function resetAll() { state = fresh(); save(); }
+
+// ---------------- profiles ----------------
+function listProfiles() { return Object.values(state.profiles); }
+function activeProfile() { return state.profiles[state.active] || null; }
+
+function addProfile(name, avatar) {
+  const id = uid();
+  state.profiles[id] = {
+    id,
+    name: (name || '').trim(),
+    avatar: avatar || AVATARS[0],
+    stats: {},
+    progress: {},
+    createdAt: Date.now(),
+  };
+  state.active = id;
+  save();
+  return id;
+}
+
+function switchProfile(id) {
+  if (state.profiles[id]) { state.active = id; save(); }
+}
+
+function updateProfile(id, patch) {
+  const p = state.profiles[id];
+  if (p) { Object.assign(p, patch); save(); }
+}
+
+function removeProfile(id) {
+  if (!state.profiles[id]) return;
+  delete state.profiles[id];
+  if (state.active === id) state.active = listProfiles()[0]?.id || null;
+  save();
+}
+
+// Overall accuracy across all skills for one profile (or the active one)
+function overallAccuracy(profile) {
+  const p = profile || activeProfile();
+  if (!p) return null;
+  let answered = 0, correct = 0;
+  for (const s of Object.values(p.progress)) {
+    answered += s.answered || 0;
+    correct += s.correct || 0;
+  }
+  return answered ? correct / answered : null;
+}
+
+// ---------------- adaptivity (always scoped to the active profile) ----------------
+function getLevel(skill, maxLevel) {
+  const p = activeProfile()?.progress[skill];
+  return Math.min(p?.level || 1, maxLevel);
+}
+
+// Record one answer. 3 correct in a row => level up, 2 misses in a row => consolidate down.
+function recordResult(skill, method, correct, maxLevel) {
+  const prof = activeProfile();
+  if (!prof) return null;
+
+  const s = (prof.stats[skill] ||= {});
+  const m = (s[method] ||= { attempts: 0, correct: 0 });
+  m.attempts++;
+  if (correct) m.correct++;
+
+  const p = (prof.progress[skill] ||= { level: 1, streak: 0, wrong: 0, answered: 0, correct: 0 });
+  p.answered++;
+  let change = null;
+  if (correct) {
+    p.correct++; p.streak++; p.wrong = 0;
+    if (p.streak >= 3 && p.level < maxLevel) { p.level++; p.streak = 0; change = 'up'; }
+  } else {
+    p.streak = 0; p.wrong++;
+    if (p.wrong >= 2 && p.level > 1) { p.level--; p.wrong = 0; change = 'down'; }
+  }
+  save();
+  return change;
+}
+
+function methodRate(skill, method) {
+  const m = activeProfile()?.stats[skill]?.[method];
+  if (!m || !m.attempts) return null;
+  return m.correct / m.attempts;
+}
+
+// Weighted choice: (success rate)^2 + exploration floor. Unseen methods get a neutral 0.5
+// so the app tries everything early, then converges on what works for this child.
+function pickMethod(skill) {
+  if (state.settings.override) return state.settings.override;
+  const weights = METHODS.map(m => {
+    const r = methodRate(skill, m);
+    return r == null ? 0.5 : r * r + 0.12;
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = Math.random() * total;
+  for (let i = 0; i < METHODS.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return METHODS[i];
+  }
+  return METHODS[METHODS.length - 1];
+}
+
+function bestMethod(skill) {
+  let best = null, bestR = -1;
+  for (const m of METHODS) {
+    const r = methodRate(skill, m);
+    if (r != null && r > bestR) { bestR = r; best = m; }
+  }
+  return best;
+}
+
+function skillAccuracy(skill) {
+  const p = activeProfile()?.progress[skill];
+  if (!p || !p.answered) return null;
+  return p.correct / p.answered;
+}
+
+// How many sessions' worth of answers this skill has had (for Smart Session ordering)
+function skillAnswered(skill) {
+  return activeProfile()?.progress[skill]?.answered || 0;
+}
+
+// ===== data.js =====
+// ---------------------------------------------------------------------------
+// Content: skills, levels and learning material (aligned to UK EYFS / KS1).
+// ---------------------------------------------------------------------------
+
+const SKILLS = {
+  numbers: {
+    id: 'numbers', name: 'Numbers', icon: '🔢', colour: '#ff9f43', maxLevel: 5,
+    levelNames: ['1 to 5', '0 to 9', '10 to 20', 'Tens to 100', '0 to 100'],
+  },
+  maths: {
+    id: 'maths', name: 'Maths', icon: '➕', colour: '#ee5253', maxLevel: 7,
+    levelNames: ['Adding to 5', 'Adding to 10', 'Taking away to 10', 'Add & take to 20', 'Times 2, 5, 10', 'Divide by 2, 5, 10', 'Missing numbers'],
+  },
+  letters: {
+    id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
+    levelNames: ['s a t p i n', 'adds m d g o c k', 'adds e u r h f b l', 'all small letters', 'big & small letters', 'all letters review'],
+  },
+  words: {
+    id: 'words', name: 'SATPIN Words', icon: '📖', colour: '#5f27cd', maxLevel: 4,
+    levelNames: ['satpin words', 'more CVC words', 'digraph words', 'blend words'],
+  },
+  colours: {
+    id: 'colours', name: 'Colours', icon: '🎨', colour: '#00b8d4', maxLevel: 4,
+    levelNames: ['4 colours', '8 colours', '11 colours', 'colour words'],
+  },
+  reading: {
+    id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 6,
+    levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band'],
+  },
+};
+
+const NUM_EMOJI = ['🍎', '⭐', '🐟', '🎈', '🦆', '🍓', '🐞', '🌸'];
+
+// Cumulative letter sets following UK phonics Phase 2 order (s a t p i n first)
+const LETTER_LEVELS = {
+  1: 'satpin',
+  2: 'satpinmdgock',
+  3: 'satpinmdgockeurhfbl',
+  4: 'abcdefghijklmnopqrstuvwxyz',
+  5: 'abcdefghijklmnopqrstuvwxyz',
+  6: 'abcdefghijklmnopqrstuvwxyz',
+};
+
+const LETTER_EMOJI = {
+  s: '🐍', a: '🍎', t: '🐯', p: '🐷', i: '🍦', n: '👃',
+  m: '🐵', d: '🐶', g: '🦍', o: '🐙', c: '🐱', k: '🪁',
+  e: '🐘', u: '☂️', r: '🐰', h: '🐴', f: '🐸', b: '🐻', l: '🦁',
+  j: '🧃', v: '🌋', w: '🍉', x: '❌', y: '🪀', z: '🦓', q: '👑',
+};
+
+// Words to decode. Level 1 uses ONLY the letters s a t p i n (true SATPIN words).
+// Level 2: full Phase 2 CVC. Level 3: Phase 3 digraphs. Level 4: Phase 4 blends.
+const WORD_LEVELS = {
+  1: ['sat', 'sit', 'pat', 'pit', 'pin', 'pan', 'nap', 'nip', 'tap', 'tip',
+      'tan', 'tin', 'sip', 'sap', 'spin', 'span', 'snap', 'spit', 'snip',
+      'pins', 'pats', 'naps', 'taps', 'tips', 'nits'],
+  2: ['cat', 'cap', 'can', 'dog', 'dig', 'dot', 'cot', 'mad', 'man', 'map',
+      'mat', 'mug', 'mud', 'bag', 'bat', 'bed', 'big', 'bin', 'bus', 'but',
+      'bun', 'cub', 'cup', 'cut', 'fed', 'fig', 'fin', 'fog', 'fun', 'gas',
+      'get', 'got', 'gum', 'ham', 'hat', 'hen', 'him', 'hip', 'hit', 'hog',
+      'hop', 'hot', 'hug', 'hut', 'kid', 'kit', 'leg', 'let', 'lid', 'lip',
+      'log', 'lot', 'net', 'not', 'nut', 'peg', 'pen', 'pet', 'pig', 'pot',
+      'rag', 'rat', 'red', 'rib', 'rip', 'rod', 'rub', 'rug', 'run', 'sad',
+      'set', 'sob', 'sub', 'sun', 'tag', 'ten', 'top', 'tub', 'tug', 'bug',
+      'sock', 'rock', 'duck', 'kick', 'back', 'neck', 'bell', 'doll', 'hill',
+      'mess', 'miss', 'off', 'huff'],
+  3: ['ship', 'shop', 'shed', 'fish', 'dish', 'chip', 'chin', 'chop', 'much',
+      'rich', 'thin', 'that', 'this', 'then', 'bath', 'moth', 'ring', 'sing',
+      'king', 'long', 'song', 'rain', 'pain', 'wait', 'tail', 'sail', 'see',
+      'seed', 'feet', 'meet', 'boat', 'coat', 'road', 'soap', 'look', 'book',
+      'cook', 'moon', 'soon', 'corn', 'born', 'night', 'light', 'right'],
+  4: ['stop', 'step', 'trip', 'trap', 'frog', 'flag', 'clap', 'slip', 'grab',
+      'plan', 'swim', 'jump', 'bump', 'hand', 'land', 'milk', 'desk', 'help',
+      'lamp', 'tent', 'went', 'fast', 'belt', 'best', 'must', 'just', 'soft',
+      'gift', 'lift', 'pink', 'crab', 'star', 'drum', 'fox'],
+};
+
+const WORD_EMOJI = {
+  // Level 1 (only satpin letters)
+  pin: '📌', pan: '🍳', tin: '🥫',
+  // Level 2
+  cat: '🐱', dog: '🐶', pig: '🐷', hen: '🐔', rat: '🐀', bat: '🦇',
+  hat: '🎩', map: '🗺️', bed: '🛏️', cup: '☕', pot: '🍲', net: '🥅',
+  log: '🪵', bug: '🐛', sun: '☀️', bus: '🚌', nut: '🥜', sock: '🧦',
+  rock: '🪨', duck: '🦆', bell: '🔔', doll: '🪆', ham: '🍖',
+  // Level 3
+  ship: '🚢', fish: '🐟', chip: '🍟', ring: '💍', king: '🤴', rain: '🌧️',
+  sail: '⛵', moon: '🌙', book: '📖', cook: '🧑‍🍳', coat: '🧥', boat: '🚤',
+  corn: '🌽', night: '🌃', light: '💡', bath: '🛁', moth: '🦋', song: '🎵',
+  seed: '🌱', feet: '🦶', soap: '🧼',
+  // Level 4
+  frog: '🐸', flag: '🚩', hand: '✋', milk: '🥛', stop: '🛑', gift: '🎁',
+  swim: '🏊', crab: '🦀', star: '⭐', drum: '🥁', fox: '🦊',
+};
+
+const COLOURS = {
+  red: '#e74c3c', blue: '#3498db', yellow: '#f1c40f', green: '#2ecc71',
+  orange: '#e67e22', purple: '#9b59b6', pink: '#ff8fb2', black: '#333333',
+  brown: '#8d5a2b', white: '#fdfdfd', grey: '#95a5a6',
+};
+
+const COLOUR_LEVELS = {
+  1: ['red', 'blue', 'yellow', 'green'],
+  2: ['red', 'blue', 'yellow', 'green', 'orange', 'purple', 'pink', 'black'],
+  3: ['red', 'blue', 'yellow', 'green', 'orange', 'purple', 'pink', 'black', 'brown', 'white', 'grey'],
+  4: ['red', 'blue', 'yellow', 'green', 'orange', 'purple', 'pink', 'black', 'brown', 'white', 'grey'],
+};
+
+// General emoji pool for picture games
+const EMOJI_POOL = ['🐶', '🐱', '🐭', '🐰', '🦆', '🐸', '🐝', '🦋', '🌳', '🌸', '⚽', '🎈', '🍎', '🚗', '🐠', '🍪'];
+
+// Reading material mapped to UK book bands.
+// Lilac = wordless picture talk; Pink = Phase 2 captions; Red = Phase 3;
+// Yellow = Phase 4; Blue/Green = Phase 5 and longer sentences.
+const READING_BANDS = [
+  {
+    level: 1, band: 'Lilac', wordless: true,
+    items: [
+      { scene: '🐶 🌳 ⚽', q: 'Tap the dog.', opts: ['🐶', '🌳', '⚽'], a: 0, huntSpeak: 'Tap all the dogs.' },
+      { scene: '🍎 🍌 🍇', q: 'Tap the apple.', opts: ['🍎', '🍌', '🍇'], a: 0, huntSpeak: 'Tap all the apples.' },
+      { scene: '🐱 🐭 🐰', q: 'Tap the rabbit.', opts: ['🐱', '🐭', '🐰'], a: 2, huntSpeak: 'Tap all the rabbits.' },
+      { scene: '🚗 🚌 🚲', q: 'Tap the bus.', opts: ['🚗', '🚌', '🚲'], a: 1, huntSpeak: 'Tap all the buses.' },
+    ],
+  },
+  {
+    level: 2, band: 'Pink',
+    items: [
+      { text: 'The cat sat.', q: 'Who sat?', opts: ['🐱', '🐶', '🐰'], a: 0 },
+      { text: 'A pin is in the tin.', q: 'What is in the tin?', opts: ['📌', '🍎', '🧦'], a: 0 },
+      { text: 'The pig can dig.', q: 'Who can dig?', opts: ['🐷', '🐱', '🦆'], a: 0 },
+      { text: 'The dog is hot.', q: 'Who is hot?', opts: ['🐶', '🐭', '🐍'], a: 0 },
+    ],
+  },
+  {
+    level: 3, band: 'Red',
+    items: [
+      { text: 'The ship is red.', q: 'What is red?', opts: ['🚢', '🚗', '🍎'], a: 0 },
+      { text: 'I can see a fish.', q: 'What can you see?', opts: ['🐟', '🐸', '🦆'], a: 0 },
+      { text: 'The king has a ring.', q: 'Who has a ring?', opts: ['🤴', '👸', '🐶'], a: 0 },
+      { text: 'The moon is bright.', q: 'What is bright?', opts: ['🌙', '🍎', '🚗'], a: 0 },
+    ],
+  },
+  {
+    level: 4, band: 'Yellow',
+    items: [
+      { text: 'The frog jumps on the log.', q: 'Where does the frog jump?', opts: ['🪵', '🛏️', '🚌'], a: 0 },
+      { text: 'A crab sat on the sand.', q: 'Who sat on the sand?', opts: ['🦀', '🐙', '🐟'], a: 0 },
+      { text: 'The tent is on the hill.', q: 'What is on the hill?', opts: ['⛺', '🏠', '🌳'], a: 0 },
+      { text: 'The girl has a pink hat.', q: 'What does the girl have?', opts: ['🎩', '👟', '🧤'], a: 0 },
+    ],
+  },
+  {
+    level: 5, band: 'Blue',
+    items: [
+      { text: 'The boy plays with his toy train.', q: 'What does the boy play with?', opts: ['🚂', '⚽', '🪁'], a: 0 },
+      { text: 'A bird sings in the green tree.', q: 'Where does the bird sing?', opts: ['🌳', '🏠', '🚗'], a: 0 },
+      { text: 'The mouse found some cheese.', q: 'What did the mouse find?', opts: ['🧀', '🍎', '🍞'], a: 0 },
+      { text: 'My cake is sweet and round.', q: 'What is sweet and round?', opts: ['🎂', '⚽', '🧱'], a: 0 },
+    ],
+  },
+  {
+    level: 6, band: 'Green',
+    items: [
+      { text: 'On Sunday the children bake sweet cakes in the kitchen.', q: 'What do the children bake?', opts: ['🎂', '🍕', '🍞'], a: 0 },
+      { text: 'The clever fox ran through the field and hid in a bush.', q: 'Where did the fox hide?', opts: ['🌳', '🏠', '🕳️'], a: 0 },
+      { text: 'A little snail slid slowly down the garden path.', q: 'Who slid down the path?', opts: ['🐌', '🐍', '🦎'], a: 0 },
+      { text: 'The queen wore a shiny crown and a green coat.', q: 'What did the queen wear?', opts: ['👑', '🧢', '🧤'], a: 0 },
+    ],
+  },
+];
+
+// ===== activities.js =====
+// ---------------------------------------------------------------------------
+// Activity engine: generates a question for (skill, level, method) and runs
+// sessions of rounds with feedback, stars and adaptive level changes.
+//
+// Question shapes (rendered by generic renderers):
+//   choice: { type, prompt:{html,speak,text}, options:[{html,cls,value}], answer }
+//   match:  { type, prompt:{text,speak}, pairs:[{left:{html,cls}, right:{html,cls}}] }
+//   hunt:   { type, prompt:{html,speak,text}, tiles:[{html, match}] }
+//   build:  { type, prompt:{html,speak,text}, tiles:[str], answer:[str] }
+// ---------------------------------------------------------------------------
+
+
+
+
+
+// ---------- small helpers ----------
+const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => {
+  const r = [...a];
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [r[i], r[j]] = [r[j], r[i]];
+  }
+  return r;
+};
+const sample = (a, n) => shuffle(a).slice(0, n);
+const spkBtn = (text, big = false) =>
+  text ? `<button class="speaker${big ? ' big' : ''}" data-say="${encodeURIComponent(text)}" aria-label="Hear it">🔊</button>` : '';
+
+function nav(where) {
+  stopSpeak();
+  window.dispatchEvent(new CustomEvent('brightsteps:nav', { detail: where }));
+}
+
+// ---------- shared builders ----------
+function answerOptions(ans, count = 3) {
+  const set = new Set([ans]);
+  for (const d of shuffle([1, -1, 2, -2, 3, -3, 10, -10])) {
+    if (set.size >= count) break;
+    const v = ans + d;
+    if (v >= 0 && !set.has(v)) set.add(v);
+  }
+  let extra = ans + 4;
+  while (set.size < count) { if (!set.has(extra)) set.add(extra); extra++; }
+  return shuffle([...set]).map(v => ({ html: `${v}`, value: v }));
+}
+
+// tens shown as 🟦 blocks, ones as an emoji
+function blocksFor(n, big = false) {
+  const tens = Math.floor(n / 10), ones = n % 10;
+  let s = '';
+  if (tens) s += '🟦'.repeat(tens);
+  if (ones) s += pick(NUM_EMOJI).repeat(ones);
+  if (!s) s = '<span style="font-size:1.1rem;color:#999">(none)</span>';
+  const size = big ? (n > 12 ? '1.5rem' : '2.6rem') : (n > 12 ? '0.85rem' : '1.3rem');
+  return `<span class="mini" style="font-size:${size};line-height:1.6;display:inline-block;max-width:300px">${s}</span>`;
+}
+
+// ---------- numbers ----------
+function numberPool(level) {
+  if (level === 4) return [10, 20, 30, 40, 50, 60, 70, 80, 90];
+  const ranges = { 1: [1, 5], 2: [0, 9], 3: [10, 20], 5: [0, 99] };
+  const [a, b] = ranges[level];
+  const out = [];
+  for (let i = a; i <= b; i++) out.push(i);
+  return out;
+}
+
+function genNumbers(level, method) {
+  const pool = numberPool(level);
+  const target = pick(pool);
+
+  if (method === 'look') {
+    return {
+      type: 'choice',
+      prompt: {
+        html: `<div class="emoji-row">${blocksFor(target, true)}</div>`,
+        text: 'How many can you see?',
+        speak: level >= 4 ? 'How many? Each blue block is ten.' : 'How many can you see?',
+      },
+      options: answerOptions(target), answer: target,
+    };
+  }
+  if (method === 'hear') {
+    return {
+      type: 'choice',
+      prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap!', speak: `Tap the number ${target}.` },
+      options: answerOptions(target), answer: target,
+    };
+  }
+  if (method === 'match') {
+    const nums = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each number to its amount!', speak: 'Match the numbers to the amounts.' },
+      pairs: nums.map(n => ({ left: { html: `${n}` }, right: { html: blocksFor(n) } })),
+    };
+  }
+  // play → number hunt
+  const others = pool.filter(n => n !== target);
+  const tiles = shuffle([
+    ...[0, 1, 2].map(() => ({ html: `${target}`, match: true })),
+    ...sample(others, Math.min(6, others.length)).map(n => ({ html: `${n}`, match: false })),
+  ]);
+  return { type: 'hunt', prompt: { speak: `Tap every number ${target}.`, text: `Tap all the ${target}s!` }, tiles };
+}
+
+// ---------- maths ----------
+function makeEq(level) {
+  let a, b, op;
+  if (level === 1) { a = rand(1, 4); b = rand(1, 5 - a); op = '+'; }
+  else if (level === 2) { a = rand(1, 9); b = rand(0, 10 - a); op = '+'; }
+  else if (level === 3) { a = rand(2, 10); b = rand(1, a); op = '−'; }
+  else if (level === 4) {
+    if (Math.random() < 0.5) { a = rand(2, 15); b = rand(1, 20 - a); op = '+'; }
+    else { a = rand(5, 20); b = rand(1, a); op = '−'; }
+  } else if (level === 5) {
+    a = pick([2, 5, 10]); b = rand(1, 5);
+    if (Math.random() < 0.5) [a, b] = [b, a];
+    op = '×';
+  } else if (level === 6) {
+    b = pick([2, 5, 10]);
+    const ans = rand(1, 5);
+    return { a: b * ans, b, op: '÷', ans, text: `${b * ans} ÷ ${b}`, speak: `What is ${b * ans} divided by ${b}?` };
+  } else { // level 7: missing number
+    a = rand(1, 9);
+    const ans = rand(1, 10 - a);
+    const c = a + ans;
+    if (Math.random() < 0.5) return { a, b: ans, op: '+', ans, missing: true, text: `${a} + ? = ${c}`, speak: `${a} add what makes ${c}?` };
+    return { a: c, b: ans, op: '−', ans, missing: true, text: `${c} − ? = ${a}`, speak: `${c} take away what makes ${a}?` };
+  }
+  const ans = op === '+' ? a + b : op === '−' ? a - b : a * b;
+  const word = op === '+' ? 'add' : op === '−' ? 'take away' : 'times';
+  return { a, b, op, ans, text: `${a} ${op} ${b}`, speak: `What is ${a} ${word} ${b}?` };
+}
+
+function eqVisual(e) {
+  if (e.missing || e.a > 12 || e.b > 12) return '';
+  const emo = pick(NUM_EMOJI);
+  if (e.op === '+') return `<div class="emoji-row" style="font-size:1.8rem">${emo.repeat(e.a)} ➕ ${emo.repeat(e.b)}</div>`;
+  if (e.op === '−') return `<div class="emoji-row" style="font-size:1.8rem">${emo.repeat(e.a - e.b)}<span style="opacity:.35;text-decoration:line-through">${emo.repeat(e.b)}</span></div>`;
+  if (e.op === '×' && e.a * e.b <= 20) {
+    const groups = [];
+    for (let i = 0; i < e.a; i++) groups.push(emo.repeat(e.b));
+    return `<div class="emoji-row" style="font-size:1.4rem">${groups.join(' · ')}</div>`;
+  }
+  return '';
+}
+
+function genMaths(level, method) {
+  const eq = makeEq(level);
+
+  if (method === 'look' || method === 'hear') {
+    const prompt = method === 'look'
+      ? { html: `<div class="big-letter" style="font-size:3.2rem">${eq.text}${eq.missing ? '' : ' = ?'}</div>${eqVisual(eq)}`, text: 'What is the answer?', speak: eq.speak }
+      : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak: eq.speak };
+    return { type: 'choice', prompt, options: answerOptions(eq.ans), answer: eq.ans };
+  }
+  if (method === 'match') {
+    const eqs = []; const texts = new Set(); let guard = 0;
+    while (eqs.length < 3 && guard++ < 300) {
+      const e = makeEq(level);
+      if (!texts.has(e.text)) { texts.add(e.text); eqs.push(e); }
+    }
+    return {
+      type: 'match',
+      prompt: { text: 'Match each sum to its answer!', speak: 'Match the sums to the answers.' },
+      pairs: eqs.map(e => ({ left: { html: `${e.text}${e.missing ? '' : ' = ?'}`, cls: 'sentence-mini' }, right: { html: `${e.ans}` } })),
+    };
+  }
+  // play → hunt all equations equal to a target
+  let base = makeEq(level), guard = 0;
+  while (base.missing && guard++ < 50) base = makeEq(level);
+  if (base.missing) return genMaths(level, 'look');
+  const target = base.ans;
+  const texts = new Set([base.text]);
+  const matchTiles = [{ html: base.text, match: true }];
+  guard = 0;
+  while (matchTiles.length < 3 && guard++ < 400) {
+    const e = makeEq(level);
+    if (!e.missing && e.ans === target && !texts.has(e.text)) { texts.add(e.text); matchTiles.push({ html: e.text, match: true }); }
+  }
+  if (matchTiles.length < 3) return genMaths(level, 'look');
+  const otherTiles = []; guard = 0;
+  while (otherTiles.length < 6 && guard++ < 400) {
+    const e = makeEq(level);
+    if (e.ans !== target && !texts.has(e.text)) { texts.add(e.text); otherTiles.push({ html: e.text, match: false }); }
+  }
+  if (otherTiles.length < 6) return genMaths(level, 'look');
+  return {
+    type: 'hunt',
+    prompt: { speak: `Tap all the sums that make ${target}.`, text: `Tap all the sums that make ${target}!` },
+    tiles: shuffle([...matchTiles, ...otherTiles]),
+  };
+}
+
+// ---------- letters ----------
+function genLetters(level, method) {
+  const pool = LETTER_LEVELS[level].split('');
+  const target = pick(pool);
+  const others = pool.filter(l => l !== target);
+
+  if (method === 'look') {
+    const upper = level >= 5 && Math.random() < 0.5;
+    const options = shuffle([target, ...sample(others, 3)])
+      .map(l => ({ html: upper ? l.toUpperCase() : l, value: l }));
+    return {
+      type: 'choice',
+      prompt: {
+        html: `<div class="big-letter">${upper ? target.toUpperCase() : target}</div>`,
+        text: 'Find the matching letter!', speak: `Find the letter ${target}.`,
+      },
+      options, answer: target,
+    };
+  }
+  if (method === 'hear') {
+    const options = shuffle([target, ...sample(others, 3)]).map(l => ({ html: l, value: l }));
+    return {
+      type: 'choice',
+      prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the letter!', speak: `Tap the letter ${target}.` },
+      options, answer: target,
+    };
+  }
+  if (method === 'match') {
+    if (level >= 5) {
+      const letters = sample(pool, 3);
+      return {
+        type: 'match',
+        prompt: { text: 'Match the big and small letters!', speak: 'Match the big letters to the small letters.' },
+        pairs: letters.map(l => ({ left: { html: l.toUpperCase() }, right: { html: l } })),
+      };
+    }
+    const letters = sample(pool.filter(l => LETTER_EMOJI[l]), 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each letter to its picture!', speak: 'Match the letters to the pictures.' },
+      pairs: letters.map(l => ({ left: { html: l }, right: { html: LETTER_EMOJI[l] } })),
+    };
+  }
+  // play → letter hunt
+  const useUpper = level >= 5 && Math.random() < 0.5;
+  const show = l => (useUpper ? l.toUpperCase() : l);
+  const tiles = shuffle([
+    ...[0, 1, 2].map(() => ({ html: show(target), match: true })),
+    ...sample(others, 6).map(l => ({ html: show(l), match: false })),
+  ]);
+  return { type: 'hunt', prompt: { speak: `Tap all the letter ${target}.`, text: `Tap all the '${show(target)}' letters!` }, tiles };
+}
+
+// ---------- SATPIN words ----------
+function genWords(level, method) {
+  const pool = WORD_LEVELS[level];
+  const withEmoji = pool.filter(w => WORD_EMOJI[w]);
+
+  if (method === 'look') {
+    // read the word (no audio giveaway), then choose the matching picture
+    const target = pick(withEmoji);
+    const options = shuffle([target, ...sample(withEmoji.filter(w => w !== target), 2)])
+      .map(w => ({ html: WORD_EMOJI[w], value: w }));
+    return {
+      type: 'choice',
+      prompt: { html: `<div class="word">${target}</div>`, text: 'Sound it out, then tap the picture!', speak: 'Sound out the word, then tap the picture.' },
+      options, answer: target,
+    };
+  }
+  if (method === 'hear') {
+    const target = pick(pool);
+    const sameLen = pool.filter(w => w !== target && w.length === target.length);
+    const distract = sample(sameLen.length >= 2 ? sameLen : pool.filter(w => w !== target), 2);
+    const options = shuffle([target, ...distract]).map(w => ({ html: w, value: w, cls: 'word-option' }));
+    return {
+      type: 'choice',
+      prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the word!', speak: `Tap the word ${target}.` },
+      options, answer: target,
+    };
+  }
+  if (method === 'match') {
+    const words = sample(withEmoji, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each word to its picture!', speak: 'Read each word and match it to the picture.' },
+      pairs: words.map(w => ({ left: { html: w, cls: 'sentence-mini' }, right: { html: WORD_EMOJI[w] } })),
+    };
+  }
+  // play → build the word from letter tiles
+  const target = pick(pool);
+  return {
+    type: 'build',
+    prompt: {
+      html: WORD_EMOJI[target] ? `<div class="emoji-row">${WORD_EMOJI[target]}</div>` : '<div class="big-letter">👂</div>',
+      speak: `Spell the word ${target}.`,
+      text: 'Tap the letters to build the word!',
+    },
+    tiles: target.split(''), answer: target.split(''),
+  };
+}
+
+// ---------- colours ----------
+function genColours(level, method) {
+  const names = COLOUR_LEVELS[level];
+  const swatch = n => `<span class="swatch" style="background:${COLOURS[n]}"></span>`;
+  const target = pick(names);
+
+  if (method === 'look' || method === 'hear') {
+    const options = shuffle([target, ...sample(names.filter(n => n !== target), 3)])
+      .map(n => ({ html: swatch(n), value: n, cls: 'swatch-option' }));
+    const prompt = method === 'look'
+      ? {
+          // at the top level the word is printed in plain black so it must be read
+          html: `<div class="word" style="color:${level >= 4 ? '#333' : COLOURS[target]}">${target}</div>`,
+          text: 'Find this colour!', speak: `Find the colour ${target}.`,
+        }
+      : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the colour!', speak: `Tap the colour ${target}.` };
+    return { type: 'choice', prompt, options, answer: target };
+  }
+  if (method === 'match') {
+    const cols = sample(names, 3);
+    return {
+      type: 'match',
+      prompt: {
+        text: level >= 4 ? 'Match each colour to its name!' : 'Match the same colours!',
+        speak: level >= 4 ? 'Match the colours to their names.' : 'Match the colours that are the same.',
+      },
+      pairs: cols.map(n => (level >= 4
+        ? { left: { html: swatch(n) }, right: { html: n, cls: 'sentence-mini' } }
+        : { left: { html: swatch(n) }, right: { html: swatch(n) } })),
+    };
+  }
+  // play → colour hunt
+  const otherNames = names.filter(n => n !== target);
+  const tiles = shuffle([
+    ...[0, 1, 2].map(() => ({ html: swatch(target), match: true })),
+    ...[0, 1, 2, 3, 4, 5].map(() => ({ html: swatch(pick(otherNames)), match: false })),
+  ]);
+  return { type: 'hunt', prompt: { speak: `Tap all the ${target} ones.`, text: `Tap all the ${target} ones!` }, tiles };
+}
+
+// ---------- reading (UK book bands) ----------
+function genReading(level, method) {
+  const band = READING_BANDS[level - 1];
+  const item = pick(band.items);
+
+  if (band.wordless) {
+    if (method === 'match') {
+      return {
+        type: 'match',
+        prompt: { text: 'Match the same pictures!', speak: 'Match the pictures that are the same.' },
+        pairs: item.opts.map(e => ({ left: { html: e }, right: { html: e } })),
+      };
+    }
+    if (method === 'play') {
+      const tgt = item.opts[item.a];
+      const others = EMOJI_POOL.filter(e => !item.opts.includes(e));
+      const tiles = shuffle([
+        ...[0, 1, 2].map(() => ({ html: tgt, match: true })),
+        ...sample(others, 6).map(e => ({ html: e, match: false })),
+      ]);
+      return { type: 'hunt', prompt: { speak: item.huntSpeak, text: item.huntSpeak }, tiles };
+    }
+    const options = shuffle(item.opts.map((e, i) => ({ html: e, value: i })));
+    return { type: 'choice', prompt: { html: `<div class="emoji-row">${item.scene}</div>`, text: item.q, speak: item.q }, options, answer: item.a };
+  }
+
+  if (method === 'match') {
+    const items = sample(band.items, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each sentence to its picture!', speak: 'Read each sentence and match it to the picture.' },
+      pairs: items.map(it => ({ left: { html: it.text, cls: 'sentence-mini' }, right: { html: it.opts[it.a] } })),
+    };
+  }
+  if (method === 'play') {
+    const words = item.text.replace(/[.!?]$/, '').split(' ');
+    return {
+      type: 'build',
+      prompt: { html: `<div class="emoji-row">${item.opts[item.a]}</div>`, speak: item.text, text: 'Listen, then build the sentence!' },
+      tiles: words, answer: words,
+    };
+  }
+  const options = shuffle(item.opts.map((e, i) => ({ html: e, value: i })));
+  if (method === 'hear') {
+    return {
+      type: 'choice',
+      prompt: { html: '<div class="big-letter">👂</div>', text: item.q, speak: `${item.text} ${item.q}` },
+      options, answer: item.a,
+    };
+  }
+  // look: child reads the sentence (audio only on request); the question is spoken
+  return {
+    type: 'choice',
+    prompt: { html: `<div class="sentence-card">${item.text} ${spkBtn(item.text)}</div>`, text: item.q, speak: item.q },
+    options, answer: item.a,
+  };
+}
+
+// ---------- dispatcher ----------
+function generateRound(skillId, level, method) {
+  switch (skillId) {
+    case 'numbers': return genNumbers(level, method);
+    case 'maths':   return genMaths(level, method);
+    case 'letters': return genLetters(level, method);
+    case 'words':   return genWords(level, method);
+    case 'colours': return genColours(level, method);
+    case 'reading': return genReading(level, method);
+    default: throw new Error(`Unknown skill: ${skillId}`);
+  }
+}
+
+// ---------- renderers ----------
+function renderChoice(host, q, onDone) {
+  host.innerHTML = `
+    <div class="prompt">
+      ${q.prompt.html || ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div>
+    <div class="options">
+      ${q.options.map((o, i) => `<button class="option ${o.cls || ''}" data-i="${i}">${o.html}</button>`).join('')}
+    </div>`;
+  if (q.prompt.speak) speak(q.prompt.speak);
+
+  let answered = false;
+  host.querySelectorAll('.option').forEach(btn => {
+    btn.onclick = () => {
+      if (answered) return;
+      answered = true;
+      const o = q.options[+btn.dataset.i];
+      if (o.value === q.answer) {
+        btn.classList.add('correct');
+        setTimeout(() => onDone(true), 1000);
+      } else {
+        btn.classList.add('wrong');
+        host.querySelectorAll('.option').forEach(b => {
+          if (q.options[+b.dataset.i].value === q.answer) b.classList.add('correct');
+        });
+        setTimeout(() => onDone(false), 1900);
+      }
+    };
+  });
+}
+
+function renderMatch(host, q, onDone) {
+  const cards = shuffle(q.pairs.flatMap((p, i) => [
+    { html: p.left.html, cls: p.left.cls || '', pair: i },
+    { html: p.right.html, cls: p.right.cls || '', pair: i },
+  ]));
+  host.innerHTML = `
+    <div class="prompt"><div class="prompt-text">${q.prompt.text || 'Match the pairs!'}</div></div>
+    <div class="match-grid">
+      ${cards.map((c, i) => `<button class="match-card ${c.cls}" data-i="${i}">${c.html}</button>`).join('')}
+    </div>`;
+  if (q.prompt.speak) speak(q.prompt.speak);
+
+  let sel = null, matched = 0, errors = 0;
+  host.querySelectorAll('.match-card').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.classList.contains('matched') || btn === sel) return;
+      if (!sel) { sel = btn; btn.classList.add('selected'); return; }
+      const a = cards[+sel.dataset.i], b = cards[+btn.dataset.i];
+      if (a.pair === b.pair) {
+        sel.classList.remove('selected');
+        sel.classList.add('matched');
+        btn.classList.add('matched');
+        sel = null;
+        matched++;
+        if (matched === q.pairs.length) setTimeout(() => onDone(errors <= 1), 900);
+      } else {
+        errors++;
+        const s = sel; sel = null;
+        s.classList.remove('selected');
+        s.classList.add('wrong');
+        btn.classList.add('wrong');
+        setTimeout(() => { s.classList.remove('wrong'); btn.classList.remove('wrong'); }, 650);
+      }
+    };
+  });
+}
+
+function renderHunt(host, q, onDone) {
+  const total = q.tiles.filter(t => t.match).length;
+  host.innerHTML = `
+    <div class="prompt">
+      ${q.prompt.html || ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div>
+    <div class="hunt-grid">
+      ${q.tiles.map((t, i) => `<button class="hunt-tile" data-i="${i}">${t.html}</button>`).join('')}
+    </div>`;
+  if (q.prompt.speak) speak(q.prompt.speak);
+
+  let found = 0, errors = 0, finished = false;
+  host.querySelectorAll('.hunt-tile').forEach(btn => {
+    btn.onclick = () => {
+      if (finished) return;
+      const t = q.tiles[+btn.dataset.i];
+      if (t.done) return;
+      t.done = true;
+      if (t.match) {
+        btn.classList.add('found');
+        found++;
+        if (found === total) { finished = true; setTimeout(() => onDone(errors <= 1), 900); }
+      } else {
+        btn.classList.add('missed');
+        errors++;
+      }
+    };
+  });
+}
+
+function renderBuild(host, q, onDone) {
+  host.innerHTML = `
+    <div class="prompt">
+      ${q.prompt.html || ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak, true) : ''}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div>
+    <div class="build-slots"></div>
+    <div class="tiles"></div>`;
+  if (q.prompt.speak) speak(q.prompt.speak);
+
+  const slotsEl = host.querySelector('.build-slots');
+  const tilesEl = host.querySelector('.tiles');
+  const tiles = shuffle(q.tiles.map((t, i) => ({ t, id: i, used: false })));
+  let slots = [], attempts = 0, finished = false;
+
+  function draw() {
+    slotsEl.innerHTML = q.answer.map((_, i) =>
+      `<button class="slot ${slots[i] ? 'filled' : ''}" data-i="${i}">${slots[i] ? slots[i].t : '&nbsp;'}</button>`).join('');
+    tilesEl.innerHTML = tiles.map(t =>
+      `<button class="tile" data-id="${t.id}" ${t.used ? 'disabled' : ''}>${t.t}</button>`).join('');
+  }
+  draw();
+
+  host.onclick = e => {
+    if (e.target.closest('.speaker')) return; // handled by global listener
+    const tileBtn = e.target.closest('.tile');
+    if (tileBtn && !tileBtn.disabled && !finished) {
+      const t = tiles.find(x => x.id === +tileBtn.dataset.id);
+      t.used = true;
+      slots.push(t);
+      draw();
+      check();
+      return;
+    }
+    const slotBtn = e.target.closest('.slot');
+    if (slotBtn && !finished) {
+      const i = +slotBtn.dataset.i;
+      if (slots[i]) { slots[i].used = false; slots.splice(i, 1); draw(); }
+    }
+  };
+
+  function check() {
+    if (slots.length < q.answer.length) return;
+    const ok = slots.every((s, i) => s.t === q.answer[i]);
+    if (ok) {
+      finished = true;
+      slotsEl.querySelectorAll('.slot').forEach(s => s.classList.add('correct'));
+      setTimeout(() => onDone(true), 1000);
+    } else {
+      attempts++;
+      slotsEl.querySelectorAll('.slot').forEach(s => s.classList.add('wrong'));
+      setTimeout(() => {
+        if (attempts >= 2) {
+          finished = true;
+          onDone(false);
+        } else {
+          slots.forEach(s => { s.used = false; });
+          slots = [];
+          draw();
+        }
+      }, 900);
+    }
+  }
+}
+
+const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild };
+
+// ---------- session runner ----------
+const PRAISE = ['Well done!', 'Amazing!', 'Super star!', 'Brilliant!', 'You did it!'];
+const CHEER = ['Good try!', 'Nearly there!', 'Keep going!'];
+
+let session = null;
+
+function startSession(skillId, rounds = 5) {
+  if (!activeProfile()) { nav('profiles'); return; } // must know who is learning
+  session = { skillId, round: 0, rounds, stars: 0, methods: {} };
+  renderRound();
+}
+
+function renderRound() {
+  const app = document.getElementById('app');
+  const skill = SKILLS[session.skillId];
+  const method = pickMethod(session.skillId);
+  const level = getLevel(session.skillId, skill.maxLevel);
+  const q = generateRound(session.skillId, level, method);
+  session.current = { method, level };
+  const mm = METHOD_META[method];
+
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="home-btn" id="homeBtn">🏠</button>
+      <div class="session-title">${skill.icon} ${skill.name}</div>
+      <div class="round-pill">⭐ ${session.stars} · ${session.round + 1}/${session.rounds}</div>
+    </div>
+    <div class="method-tag-wrap"><span class="method-tag">${mm.icon} ${mm.name} · Level ${level} (${skill.levelNames[level - 1]})</span></div>
+    <div id="qhost"></div>`;
+  document.getElementById('homeBtn').onclick = () => nav('home');
+  RENDER[q.type](document.getElementById('qhost'), q, done);
+}
+
+function done(correct) {
+  const { method, level } = session.current;
+  const change = recordResult(session.skillId, method, correct, SKILLS[session.skillId].maxLevel);
+  const rec = (session.methods[method] ||= { a: 0, c: 0 });
+  rec.a++;
+  if (correct) { rec.c++; session.stars++; }
+  showFeedback(correct, change, () => {
+    session.round++;
+    if (session.round >= session.rounds) renderSummary();
+    else renderRound();
+  });
+}
+
+function showFeedback(correct, change, cb) {
+  const o = document.createElement('div');
+  o.className = 'feedback-overlay';
+  const word = correct ? pick(PRAISE) : pick(CHEER);
+  o.innerHTML = `
+    <div class="feedback-emoji">${correct ? '🌟' : '💪'}</div>
+    <div class="feedback-word">${word}</div>
+    ${change === 'up' ? '<div class="level-up">⬆️ Level up! Amazing!</div>' : ''}`;
+  document.body.appendChild(o);
+  speak(correct ? word : (change === 'down' ? "Let's try something a little easier." : word));
+  setTimeout(() => { o.remove(); cb(); }, change === 'up' ? 2100 : 1400);
+}
+
+function renderSummary() {
+  const app = document.getElementById('app');
+  const skill = SKILLS[session.skillId];
+  const { stars, rounds } = session;
+  const msg = stars === rounds ? 'Perfect! You are a superstar! 🌟'
+    : stars >= rounds / 2 ? 'Great work! Keep it up! 💪'
+    : 'Good try! Practice makes perfect! 🌱';
+  const chips = Object.entries(session.methods).map(([m, r]) => {
+    const mm = METHOD_META[m];
+    return `<span class="chip">${mm.icon} ${mm.name}: ${r.c}/${r.a}</span>`;
+  }).join('');
+  const best = bestMethod(session.skillId);
+  const skillId = session.skillId;
+
+  app.innerHTML = `
+    <div class="summary-card">
+      <div class="summary-stars">${'⭐'.repeat(stars)}${'☆'.repeat(rounds - stars)}</div>
+      <div class="summary-msg">${msg}</div>
+      <div class="method-chips">${chips}</div>
+      ${best ? `<p class="summary-msg" style="font-size:1.05rem;color:#777">You learn ${skill.name} best with ${METHOD_META[best].icon} <b>${METHOD_META[best].name}</b> — we'll show you more of that!</p>` : ''}
+      <div class="btn-row">
+        <button class="btn" id="againBtn">🔁 Play Again</button>
+        <button class="btn secondary" id="homeBtn">🏠 Home</button>
+      </div>
+    </div>`;
+  confetti();
+  speak(msg);
+  document.getElementById('againBtn').onclick = () => startSession(skillId);
+  document.getElementById('homeBtn').onclick = () => nav('home');
+}
+
+function confetti() {
+  const emos = ['🎉', '⭐', '🌟', '✨', '🎈'];
+  for (let i = 0; i < 24; i++) {
+    const s = document.createElement('span');
+    s.className = 'confetti';
+    s.textContent = pick(emos);
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.animationDuration = (2.2 + Math.random() * 1.8) + 's';
+    s.style.fontSize = (1 + Math.random() * 1.4) + 'rem';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 4200);
+  }
+}
+
+// ===== screens.js =====
+// Screens: profile picker, profile creation, home, parent dashboard.
+
+
+
+
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function nav(where) {
+  window.dispatchEvent(new CustomEvent('brightsteps:nav', { detail: where }));
+}
+
+// ---------------- home ----------------
+function renderHome() {
+  const prof = activeProfile();
+  if (!prof) { renderProfiles(); return; }
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <h1 class="app-title">🌈 Bright Steps</h1>
+    <p class="tagline">Learn your way — the app notices what works and gives you more of it!</p>
+    <p class="greeting">${prof.avatar} Hello, <b>${esc(prof.name || 'friend')}</b>!
+      <button class="switch-btn" id="switchBtn">👥 not you?</button>
+    </p>
+    <button class="btn smart-btn" id="smartBtn">✨ Smart Session</button>
+    <div class="skill-grid">
+      ${Object.values(SKILLS).map(sk => {
+        const lvl = getLevel(sk.id, sk.maxLevel);
+        const acc = skillAccuracy(sk.id);
+        return `
+          <div class="skill-card" style="--c:${sk.colour}" data-id="${sk.id}">
+            <div class="skill-icon">${sk.icon}</div>
+            <div class="skill-name">${sk.name}</div>
+            <div class="skill-level">Level ${lvl} · ${sk.levelNames[lvl - 1]}</div>
+            <div class="skill-level">${acc == null ? 'Not played yet' : `Accuracy ${Math.round(acc * 100)}%`}</div>
+          </div>`;
+      }).join('')}
+    </div>
+    <p class="parent-link"><button class="btn secondary" id="parentBtn">👨‍👩‍👧 Parent Dashboard</button></p>`;
+
+  document.querySelectorAll('.skill-card').forEach(card => {
+    card.onclick = () => startSession(card.dataset.id);
+  });
+  document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
+  document.getElementById('parentBtn').onclick = () => nav('dashboard');
+  document.getElementById('switchBtn').onclick = () => nav('profiles');
+}
+
+// Smart Session: prioritise the least-practised skill, then the lowest accuracy.
+function pickSmartSkill() {
+  return Object.keys(SKILLS).sort((a, b) => {
+    const aa = skillAnswered(a), ab = skillAnswered(b);
+    if (aa !== ab) return aa - ab;
+    return (skillAccuracy(a) ?? 0.5) - (skillAccuracy(b) ?? 0.5);
+  })[0];
+}
+
+// ---------------- profile picker ----------------
+function renderProfiles() {
+  const app = document.getElementById('app');
+  const profiles = listProfiles();
+
+  app.innerHTML = `
+    <h1 class="app-title">🌈 Bright Steps</h1>
+    <p class="greeting">Who is learning today?</p>
+    <div class="profile-grid">
+      ${profiles.map(p => {
+        const acc = overallAccuracy(p);
+        return `
+          <div class="profile-card" data-id="${p.id}">
+            <div class="profile-avatar">${p.avatar}</div>
+            <div class="profile-name">${esc(p.name || 'Unnamed')}</div>
+            <div class="profile-sub">${acc == null ? 'new learner' : Math.round(acc * 100) + '% overall'}</div>
+          </div>`;
+      }).join('')}
+      <div class="profile-card add" id="addCard">
+        <div class="profile-avatar">➕</div>
+        <div class="profile-name">Add child</div>
+        <div class="profile-sub">create a profile</div>
+      </div>
+    </div>
+    ${state.active ? '<p class="parent-link"><button class="btn secondary" id="backHome">← Back</button></p>' : ''}`;
+
+  document.querySelectorAll('.profile-card[data-id]').forEach(card => {
+    card.onclick = () => { switchProfile(card.dataset.id); renderHome(); };
+  });
+  document.getElementById('addCard').onclick = () => renderProfileForm();
+  const back = document.getElementById('backHome');
+  if (back) back.onclick = () => renderHome();
+}
+
+// ---------------- new profile form ----------------
+function renderProfileForm() {
+  const app = document.getElementById('app');
+  let selected = AVATARS[0];
+
+  app.innerHTML = `
+    <div class="topbar"><button class="home-btn" id="backBtn">←</button>
+      <div class="session-title">New learner</div><span></span></div>
+    <div class="dash-card" style="text-align:center">
+      <p style="font-size:1.3rem;margin-top:4px">Pick an avatar:</p>
+      <div class="avatar-row" id="avatarRow">
+        ${AVATARS.map((a, i) => `<button class="avatar-btn ${i === 0 ? 'selected' : ''}" data-a="${a}">${a}</button>`).join('')}
+      </div>
+      <input class="name-input" id="newName" placeholder="Child's name" style="text-align:center;font-size:1.4rem" maxlength="20">
+      <div class="btn-row"><button class="btn" id="saveBtn">Start! 🚀</button></div>
+    </div>`;
+
+  document.querySelectorAll('#avatarRow .avatar-btn').forEach(btn => {
+    btn.onclick = () => {
+      selected = btn.dataset.a;
+      document.querySelectorAll('#avatarRow .avatar-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
+  const saveProfile = () => {
+    const name = document.getElementById('newName').value;
+    addProfile(name, selected);
+    renderHome();
+  };
+  document.getElementById('saveBtn').onclick = saveProfile;
+  document.getElementById('newName').onkeydown = e => { if (e.key === 'Enter') saveProfile(); };
+  document.getElementById('backBtn').onclick = () => renderProfiles();
+  document.getElementById('newName').focus();
+}
+
+// ---------------- parent dashboard ----------------
+function renderDashboard() {
+  const app = document.getElementById('app');
+  const prof = activeProfile();
+
+  const profileRows = listProfiles().map(p => {
+    const acc = overallAccuracy(p);
+    return `
+      <div class="profile-row">
+        <span style="font-size:1.8rem">${p.avatar}</span>
+        <b>${esc(p.name || 'Unnamed')}</b>
+        ${p.id === state.active ? '<span class="chip">current</span>' : ''}
+        <span class="profile-sub">${acc == null ? 'no plays yet' : Math.round(acc * 100) + '% overall'}</span>
+        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          ${p.id !== state.active ? `<button class="mini-btn" data-switch="${p.id}">Switch</button>` : ''}
+          <button class="mini-btn" data-rename="${p.id}">Rename</button>
+          <button class="mini-btn" data-avatar="${p.id}">Avatar</button>
+          <button class="mini-btn" data-delete="${p.id}">🗑</button>
+        </span>
+      </div>`;
+  }).join('');
+
+  const cards = prof ? Object.values(SKILLS).map(sk => {
+    const lvl = getLevel(sk.id, sk.maxLevel);
+    const acc = skillAccuracy(sk.id);
+    const best = bestMethod(sk.id);
+    const bars = METHODS.map(m => {
+      const r = methodRate(sk.id, m);
+      const mm = METHOD_META[m];
+      const pct = r == null ? 0 : Math.round(r * 100);
+      return `
+        <div class="bar-row">
+          <div>${mm.icon} ${mm.name} ${best === m ? '<span class="best-badge">⭐ preferred</span>' : ''}</div>
+          <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <div class="bar-label">${r == null ? 'no data yet' : pct + '%'}</div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="dash-card">
+        <div class="dash-head">
+          <span class="icon">${sk.icon}</span><span class="name">${sk.name}</span>
+          <span class="level-pill">Level ${lvl}: ${sk.levelNames[lvl - 1]}</span>
+        </div>
+        <div class="bar-label" style="margin-bottom:8px">Overall accuracy: ${acc == null ? '—' : Math.round(acc * 100) + '%'}</div>
+        ${bars}
+      </div>`;
+  }).join('') : '<div class="dash-card">No profile selected.</div>';
+
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="home-btn" id="homeBtn">🏠</button>
+      <div class="session-title">👨‍👩‍👧 Parent Dashboard</div><span></span>
+    </div>
+    <div class="dash-card">
+      <div class="dash-head"><span class="icon">🧒</span><span class="name">Children</span></div>
+      ${profileRows || '<p class="dash-note">No profiles yet.</p>'}
+      <div class="btn-row" style="justify-content:flex-start;margin-top:12px">
+        <button class="btn small secondary" id="addProfileBtn">➕ Add child</button>
+      </div>
+    </div>
+    <div class="dash-card">
+      <div class="settings-row">
+        <label>Learning method:
+          <select id="overrideSel">
+            <option value="">✨ Adaptive (recommended)</option>
+            ${METHODS.map(m => `<option value="${m}" ${state.settings.override === m ? 'selected' : ''}>${METHOD_META[m].icon} ${METHOD_META[m].name}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <p class="dash-note">
+        Showing stats for <b>${prof ? `${prof.avatar} ${esc(prof.name || 'Unnamed')}` : '—'}</b>.
+        <b>How adaptivity works:</b> every answer is counted per child, per skill and per learning method.
+        Methods with higher success rates are chosen more often, and harder (higher-level)
+        material is served preferentially through the child's most successful methods —
+        with a little exploration kept so the app keeps learning too.
+        Three correct answers in a row move up a level; two misses move back down to consolidate.
+      </p>
+    </div>
+    ${cards}
+    <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>`;
+
+  document.getElementById('homeBtn').onclick = () => nav('home');
+  const sel = document.getElementById('overrideSel');
+  sel.onchange = () => { state.settings.override = sel.value || null; save(); };
+  document.getElementById('addProfileBtn').onclick = () => renderProfileForm();
+
+  document.querySelectorAll('[data-switch]').forEach(b => {
+    b.onclick = () => { switchProfile(b.dataset.switch); renderDashboard(); };
+  });
+  document.querySelectorAll('[data-rename]').forEach(b => {
+    b.onclick = () => {
+      const p = state.profiles[b.dataset.rename];
+      const name = prompt('New name:', p?.name || '');
+      if (name !== null) { updateProfile(b.dataset.rename, { name: name.trim() }); renderDashboard(); }
+    };
+  });
+  document.querySelectorAll('[data-avatar]').forEach(b => {
+    b.onclick = () => {
+      const p = state.profiles[b.dataset.avatar];
+      if (!p) return;
+      const next = AVATARS[(AVATARS.indexOf(p.avatar) + 1) % AVATARS.length];
+      updateProfile(p.id, { avatar: next });
+      renderDashboard();
+    };
+  });
+  document.querySelectorAll('[data-delete]').forEach(b => {
+    b.onclick = () => {
+      const p = state.profiles[b.dataset.delete];
+      if (confirm(`Delete profile "${p?.name || 'Unnamed'}" and all its progress?`)) {
+        removeProfile(b.dataset.delete);
+        renderDashboard();
+      }
+    };
+  });
+  document.getElementById('resetBtn').onclick = () => {
+    if (confirm('Reset EVERYTHING — all children, progress and statistics?')) { resetAll(); renderDashboard(); }
+  };
+}
+
+// ===== main.js =====
+// App entry point: routing + global speaker-button handling.
+
+
+
+function route(where) {
+  stopSpeak();
+  if (where === 'dashboard') renderDashboard();
+  else if (where === 'profiles') renderProfiles();
+  else renderHome();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('brightsteps:nav', e => route(e.detail));
+}
+
+// Any 🔊 button with data-say speaks its text (event delegation survives re-renders)
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', e => {
+    const s = e.target.closest('.speaker');
+    if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say));
+  });
+  renderHome();
+}
+
+</script>
+</body>
+</html>

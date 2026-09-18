@@ -1,0 +1,30 @@
+{
+  "name": "Bright Steps \u2014 Learn Your Way",
+  "short_name": "Bright Steps",
+  "description": "Adaptive early-years learning for ages 4-7 (UK EYFS/KS1): numbers, maths, letters, SATPIN words, colours and book-band reading.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff6e9",
+  "theme_color": "#5f27cd",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
