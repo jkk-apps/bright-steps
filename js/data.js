@@ -27,6 +27,131 @@ export const SKILLS = {
     id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 6,
     levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band'],
   },
+  piano: {
+    id: 'piano', name: 'Piano', icon: '🎹', colour: '#845ef2', maxLevel: 4,
+    levelNames: ['C D E', 'C to G', 'one octave', 'two octaves'],
+  },
+  spanish: {
+    id: 'spanish', name: 'Spanish', icon: '🇪🇸', colour: '#f59f00', maxLevel: 6,
+    levelNames: ['greetings', 'numbers 1-5', 'numbers 6-10', 'colours', 'animals', 'food'],
+  },
+  french: {
+    id: 'french', name: 'French', icon: '🇫🇷', colour: '#4dabf7', maxLevel: 6,
+    levelNames: ['greetings', 'numbers 1-5', 'numbers 6-10', 'colours', 'animals', 'food'],
+  },
+};
+
+// ---------------- piano ----------------
+// Official Boomwhackers / Chroma-Notes colours — the de-facto standard in UK
+// primary school music (C=red … B=magenta), so app learning transfers to
+// classroom instruments. Source: funmusicco.com Boomwhacker colour chart.
+export const NOTE_COLOURS = {
+  C: '#EB2427', D: '#F6851F', E: '#FBED1B', F: '#6BBE46',
+  G: '#0C9648', A: '#80539F', B: '#E14197',
+};
+
+// Letter-label text colour per key: dark on the light keys (E, F) so labels stay readable
+export const NOTE_TEXT = {
+  C: '#ffffff', D: '#ffffff', E: '#3d3d3d', F: '#3d3d3d',
+  G: '#ffffff', A: '#ffffff', B: '#ffffff',
+};
+
+// Frequencies for two octaves (C4-B4, C5-B5)
+export const PIANO_OCTAVES = [
+  { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392.00, A: 440.00, B: 493.88 },
+  { C: 523.25, D: 587.33, E: 659.25, F: 698.46, G: 783.99, A: 880.00, B: 987.77 },
+];
+
+export const PIANO_LEVEL_NOTES = {
+  1: ['C', 'D', 'E'],
+  2: ['C', 'D', 'E', 'F', 'G'],
+  3: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+  4: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], // across two octaves
+};
+
+// ---------------- languages ----------------
+// Item shape: { w: word, en: English meaning, emoji?, num?, colour? }
+export const LANG_CONTENT = {
+  spanish: {
+    lang: 'es-ES',
+    levels: {
+      1: [
+        { w: 'hola', en: 'hello', emoji: '👋' },
+        { w: 'adiós', en: 'goodbye', emoji: '🚪' },
+        { w: 'gracias', en: 'thank you', emoji: '🙏' },
+        { w: 'por favor', en: 'please', emoji: '🌈' },
+        { w: 'sí', en: 'yes', emoji: '✅' },
+        { w: 'no', en: 'no', emoji: '❌' },
+      ],
+      2: [
+        { w: 'uno', en: 'one', num: 1 }, { w: 'dos', en: 'two', num: 2 },
+        { w: 'tres', en: 'three', num: 3 }, { w: 'cuatro', en: 'four', num: 4 },
+        { w: 'cinco', en: 'five', num: 5 },
+      ],
+      3: [
+        { w: 'seis', en: 'six', num: 6 }, { w: 'siete', en: 'seven', num: 7 },
+        { w: 'ocho', en: 'eight', num: 8 }, { w: 'nueve', en: 'nine', num: 9 },
+        { w: 'diez', en: 'ten', num: 10 },
+      ],
+      4: [
+        { w: 'rojo', en: 'red', colour: '#e74c3c' }, { w: 'azul', en: 'blue', colour: '#3498db' },
+        { w: 'amarillo', en: 'yellow', colour: '#f1c40f' }, { w: 'verde', en: 'green', colour: '#2ecc71' },
+        { w: 'naranja', en: 'orange', colour: '#e67e22' }, { w: 'rosa', en: 'pink', colour: '#ff8fb2' },
+        { w: 'negro', en: 'black', colour: '#333333' }, { w: 'blanco', en: 'white', colour: '#fdfdfd' },
+      ],
+      5: [
+        { w: 'gato', en: 'cat', emoji: '🐱' }, { w: 'perro', en: 'dog', emoji: '🐶' },
+        { w: 'pájaro', en: 'bird', emoji: '🐦' }, { w: 'pez', en: 'fish', emoji: '🐟' },
+        { w: 'caballo', en: 'horse', emoji: '🐴' }, { w: 'vaca', en: 'cow', emoji: '🐮' },
+        { w: 'cerdo', en: 'pig', emoji: '🐷' }, { w: 'pato', en: 'duck', emoji: '🦆' },
+      ],
+      6: [
+        { w: 'manzana', en: 'apple', emoji: '🍎' }, { w: 'leche', en: 'milk', emoji: '🥛' },
+        { w: 'pan', en: 'bread', emoji: '🍞' }, { w: 'queso', en: 'cheese', emoji: '🧀' },
+        { w: 'agua', en: 'water', emoji: '💧' }, { w: 'zumo', en: 'juice', emoji: '🧃' },
+      ],
+    },
+  },
+  french: {
+    lang: 'fr-FR',
+    levels: {
+      1: [
+        { w: 'bonjour', en: 'hello', emoji: '👋' },
+        { w: 'au revoir', en: 'goodbye', emoji: '🚪' },
+        { w: 'merci', en: 'thank you', emoji: '🙏' },
+        { w: "s'il vous plaît", en: 'please', emoji: '🌈' },
+        { w: 'oui', en: 'yes', emoji: '✅' },
+        { w: 'non', en: 'no', emoji: '❌' },
+      ],
+      2: [
+        { w: 'un', en: 'one', num: 1 }, { w: 'deux', en: 'two', num: 2 },
+        { w: 'trois', en: 'three', num: 3 }, { w: 'quatre', en: 'four', num: 4 },
+        { w: 'cinq', en: 'five', num: 5 },
+      ],
+      3: [
+        { w: 'six', en: 'six', num: 6 }, { w: 'sept', en: 'seven', num: 7 },
+        { w: 'huit', en: 'eight', num: 8 }, { w: 'neuf', en: 'nine', num: 9 },
+        { w: 'dix', en: 'ten', num: 10 },
+      ],
+      4: [
+        { w: 'rouge', en: 'red', colour: '#e74c3c' }, { w: 'bleu', en: 'blue', colour: '#3498db' },
+        { w: 'jaune', en: 'yellow', colour: '#f1c40f' }, { w: 'vert', en: 'green', colour: '#2ecc71' },
+        { w: 'orange', en: 'orange', colour: '#e67e22' }, { w: 'rose', en: 'pink', colour: '#ff8fb2' },
+        { w: 'noir', en: 'black', colour: '#333333' }, { w: 'blanc', en: 'white', colour: '#fdfdfd' },
+      ],
+      5: [
+        { w: 'chat', en: 'cat', emoji: '🐱' }, { w: 'chien', en: 'dog', emoji: '🐶' },
+        { w: 'oiseau', en: 'bird', emoji: '🐦' }, { w: 'poisson', en: 'fish', emoji: '🐟' },
+        { w: 'cheval', en: 'horse', emoji: '🐴' }, { w: 'vache', en: 'cow', emoji: '🐮' },
+        { w: 'cochon', en: 'pig', emoji: '🐷' }, { w: 'canard', en: 'duck', emoji: '🦆' },
+      ],
+      6: [
+        { w: 'pomme', en: 'apple', emoji: '🍎' }, { w: 'lait', en: 'milk', emoji: '🥛' },
+        { w: 'pain', en: 'bread', emoji: '🍞' }, { w: 'fromage', en: 'cheese', emoji: '🧀' },
+        { w: 'eau', en: 'water', emoji: '💧' }, { w: 'jus', en: 'juice', emoji: '🧃' },
+      ],
+    },
+  },
 };
 
 export const NUM_EMOJI = ['🍎', '⭐', '🐟', '🎈', '🦆', '🍓', '🐞', '🌸'];

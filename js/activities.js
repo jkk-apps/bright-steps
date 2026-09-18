@@ -12,9 +12,11 @@
 import {
   SKILLS, NUM_EMOJI, LETTER_LEVELS, LETTER_EMOJI, WORD_LEVELS, WORD_EMOJI,
   COLOURS, COLOUR_LEVELS, READING_BANDS, EMOJI_POOL,
+  NOTE_COLOURS, NOTE_TEXT, PIANO_OCTAVES, PIANO_LEVEL_NOTES, LANG_CONTENT,
 } from './data.js';
-import { METHOD_META, recordResult, pickMethod, getLevel, bestMethod, activeProfile } from './engine.js';
-import { speak, stopSpeak } from './speech.js';
+import { METHOD_META, recordResult, pickMethod, getLevel, activeProfile } from './engine.js';
+import { speak, speakSeq, stopSpeak, speechAvailable } from './speech.js';
+import { playNote, playNotes } from './audio.js';
 
 // ---------- small helpers ----------
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
@@ -28,8 +30,23 @@ const shuffle = a => {
   return r;
 };
 const sample = (a, n) => shuffle(a).slice(0, n);
-const spkBtn = (text, big = false) =>
-  text ? `<button class="speaker${big ? ' big' : ''}" data-say="${encodeURIComponent(text)}" aria-label="Hear it">🔊</button>` : '';
+const spkBtn = (text, big = false, lang = null) =>
+  text ? `<button class="speaker${big ? ' big' : ''}" data-say="${encodeURIComponent(text)}"${lang ? ` data-lang="${lang}"` : ''} aria-label="Hear it">🔊</button>` : '';
+
+// span version for use INSIDE option buttons (nested <button> is invalid HTML)
+const spkMini = (text, lang = null) =>
+  text ? `<span class="speaker mini-spk" data-say="${encodeURIComponent(text)}"${lang ? ` data-lang="${lang}"` : ''} role="button" aria-label="Hear it">🔊</span>` : '';
+
+// Makes an element replay its spoken instruction when tapped
+const speakable = (text, lang = null) =>
+  text ? ` class="speakable" data-say="${encodeURIComponent(text)}"${lang ? ` data-lang="${lang}"` : ''}` : '';
+
+// Auto-speak a prompt: bilingual sequence if present, else plain/lang speech
+function speakPrompt(p) {
+  if (!p) return;
+  if (p.speakSeq) speakSeq(p.speakSeq);
+  else if (p.speak) speak(p.speak, { lang: p.lang });
+}
 
 function nav(where) {
   stopSpeak();
@@ -49,15 +66,22 @@ function answerOptions(ans, count = 3) {
   return shuffle([...set]).map(v => ({ html: `${v}`, value: v }));
 }
 
-// tens shown as 🟦 blocks, ones as an emoji
+// Numbers shown as real circled groups of ten items + loose ones —
+// no abstract key needed: children can see ten inside every circle and
+// simply count in tens (10, 20, 30...) then count on the ones.
 function blocksFor(n, big = false) {
   const tens = Math.floor(n / 10), ones = n % 10;
+  const size = big ? (n > 12 ? '1rem' : '2.6rem') : (n > 12 ? '0.7rem' : '1.3rem');
   let s = '';
-  if (tens) s += '🟦'.repeat(tens);
-  if (ones) s += pick(NUM_EMOJI).repeat(ones);
+  if (tens) {
+    const emo = pick(NUM_EMOJI);
+    for (let i = 0; i < tens; i++) {
+      s += `<span class="ten-group">${emo.repeat(10)}</span>`;
+    }
+  }
+  if (ones) s += `<span class="ones-group">${pick(NUM_EMOJI).repeat(ones)}</span>`;
   if (!s) s = '<span style="font-size:1.1rem;color:#999">(none)</span>';
-  const size = big ? (n > 12 ? '1.5rem' : '2.6rem') : (n > 12 ? '0.85rem' : '1.3rem');
-  return `<span class="mini" style="font-size:${size};line-height:1.6;display:inline-block;max-width:300px">${s}</span>`;
+  return `<span class="mini" style="font-size:${size};line-height:1.9;display:inline-block;max-width:${big ? '640px' : '300px'}">${s}</span>`;
 }
 
 // ---------- numbers ----------
@@ -80,7 +104,7 @@ function genNumbers(level, method) {
       prompt: {
         html: `<div class="emoji-row">${blocksFor(target, true)}</div>`,
         text: 'How many can you see?',
-        speak: level >= 4 ? 'How many? Each blue block is ten.' : 'How many can you see?',
+        speak: level >= 4 ? 'How many? Count in tens!' : 'How many can you see?',
       },
       options: answerOptions(target), answer: target,
     };
@@ -310,8 +334,9 @@ function genColours(level, method) {
       .map(n => ({ html: swatch(n), value: n, cls: 'swatch-option' }));
     const prompt = method === 'look'
       ? {
-          // at the top level the word is printed in plain black so it must be read
-          html: `<div class="word" style="color:${level >= 4 ? '#333' : COLOURS[target]}">${target}</div>`,
+          // the word is always plain dark grey — never printed in its own colour,
+          // so the child can't just match the ink to the swatch
+          html: `<div class="word" style="color:#333">${target}</div>`,
           text: 'Find this colour!', speak: `Find the colour ${target}.`,
         }
       : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the colour!', speak: `Tap the colour ${target}.` };
@@ -389,15 +414,127 @@ function genReading(level, method) {
       options, answer: item.a,
     };
   }
-  // look: child reads the sentence (audio only on request); the question is spoken
+  // look: child reads the sentence (audio only on request); the question is spoken.
+  // The sentence card itself is tappable to hear the sentence read aloud.
   return {
     type: 'choice',
-    prompt: { html: `<div class="sentence-card">${item.text} ${spkBtn(item.text)}</div>`, text: item.q, speak: item.q },
+    prompt: { html: `<div class="sentence-card speakable" data-say="${encodeURIComponent(item.text)}">${item.text} ${spkBtn(item.text)}</div>`, text: item.q, speak: item.q },
     options, answer: item.a,
   };
 }
 
 // ---------- dispatcher ----------
+// ---------- languages (Spanish / French) ----------
+function genLanguage(level, method, content) {
+  const L = content.lang;
+  const items = content.levels[level];
+  const target = pick(items);
+  const others = items.filter(i => i !== target);
+  const visual = it => it.colour
+    ? `<span class="swatch" style="background:${it.colour}"></span>`
+    : (it.num != null ? `${it.num}` : it.emoji);
+  const bigVisual = it => it.colour
+    ? `<span class="swatch" style="background:${it.colour};width:110px;height:110px"></span>`
+    : (it.num != null ? `<div class="emoji-row">${pick(NUM_EMOJI).repeat(it.num)}</div>` : `<div class="emoji-row">${it.emoji}</div>`);
+
+  if (method === 'look') {
+    // picture/count/colour shown; choose the matching word (options can be heard first)
+    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+      html: `<span class="opt-word">${it.w}</span>${spkMini(it.w, L)}`,
+      value: it.w, cls: 'word-option',
+    }));
+    return {
+      type: 'choice',
+      prompt: { html: bigVisual(target), text: 'Tap the word that matches!', speak: 'Tap the word that matches the picture.' },
+      options, answer: target.w,
+    };
+  }
+  if (method === 'hear') {
+    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+      html: visual(it), value: it.w, cls: it.colour ? 'swatch-option' : '',
+    }));
+    return {
+      type: 'choice',
+      prompt: {
+        html: '<div class="big-letter">👂</div>', text: 'Listen, then tap!',
+        speak: target.w, lang: L,
+        speakSeq: [{ text: 'Listen, then tap what you hear!' }, { text: target.w, lang: L }],
+      },
+      options, answer: target.w,
+    };
+  }
+  if (method === 'match') {
+    const three = sample(items, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each word to its picture!', speak: 'Match the words to the pictures. Tap a word to hear it!' },
+      pairs: three.map(it => ({
+        left: { html: it.w, cls: 'sentence-mini', say: it.w, lang: L },
+        right: { html: visual(it) },
+      })),
+    };
+  }
+  // play → build the word from letter tiles (single words only)
+  const buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'"));
+  const t = buildPool.includes(target) ? target : pick(buildPool);
+  return {
+    type: 'build',
+    prompt: {
+      html: bigVisual(t),
+      text: 'Build the word!',
+      speak: t.w, lang: L,
+      speakSeq: [{ text: `Build the word for ${t.en}!` }, { text: t.w, lang: L }],
+    },
+    tiles: t.w.split(''), answer: t.w.split(''),
+  };
+}
+
+// ---------- piano ----------
+function pianoKeysFor(level) {
+  const names = PIANO_LEVEL_NOTES[level];
+  const octaves = level >= 4 ? 2 : 1;
+  const keys = [];
+  for (let o = 0; o < octaves; o++) {
+    names.forEach(n => keys.push({ n, freq: PIANO_OCTAVES[o][n], colour: NOTE_COLOURS[n] }));
+  }
+  return keys;
+}
+
+function genPiano(level, method) {
+  const keys = pianoKeysFor(level);
+  const names = PIANO_LEVEL_NOTES[level];
+  if (method === 'match') {
+    const notes = sample(names, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each note to its colour!', speak: 'Match the notes to their colours.' },
+      pairs: notes.map(n => ({
+        left: { html: n },
+        right: { html: `<span class="swatch" style="background:${NOTE_COLOURS[n]}"></span>` },
+      })),
+    };
+  }
+  if (method === 'play') {
+    const len = level === 1 ? 2 : level <= 3 ? 3 : 4;
+    const sequence = Array.from({ length: len }, () => pick(names));
+    return {
+      type: 'piano', mode: 'copy', keys, sequence, labelKeys: level <= 2,
+      prompt: { text: 'Listen, then copy my tune!', speak: 'Listen to my tune, then copy it!' },
+    };
+  }
+  const target = pick(names);
+  if (method === 'hear') {
+    return {
+      type: 'piano', mode: 'find', keys, target, hearOnly: true, labelKeys: level <= 2,
+      prompt: { text: 'Listen, then find the note!', speak: 'Listen to the note, then find it on the piano!' },
+    };
+  }
+  return {
+    type: 'piano', mode: 'find', keys, target, labelKeys: level <= 2,
+    prompt: { html: `<div class="big-letter">${target}</div>`, text: 'Find this key!', speak: `Find the key ${target}.` },
+  };
+}
+
 export function generateRound(skillId, level, method) {
   switch (skillId) {
     case 'numbers': return genNumbers(level, method);
@@ -406,6 +543,9 @@ export function generateRound(skillId, level, method) {
     case 'words':   return genWords(level, method);
     case 'colours': return genColours(level, method);
     case 'reading': return genReading(level, method);
+    case 'piano':   return genPiano(level, method);
+    case 'spanish': return genLanguage(level, method, LANG_CONTENT.spanish);
+    case 'french':  return genLanguage(level, method, LANG_CONTENT.french);
     default: throw new Error(`Unknown skill: ${skillId}`);
   }
 }
@@ -413,19 +553,20 @@ export function generateRound(skillId, level, method) {
 // ---------- renderers ----------
 function renderChoice(host, q, onDone) {
   host.innerHTML = `
-    <div class="prompt">
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}>
       ${q.prompt.html || ''}
-      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak, false, q.prompt.lang) : ''}
       <div class="prompt-text">${q.prompt.text || ''}</div>
-    </div>
+    </div></div>
     <div class="options">
       ${q.options.map((o, i) => `<button class="option ${o.cls || ''}" data-i="${i}">${o.html}</button>`).join('')}
     </div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   let answered = false;
   host.querySelectorAll('.option').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = e => {
+      if (e.target.closest('[data-say]')) return; // tapped a 🔊 inside the option — hear it, don't answer
       if (answered) return;
       answered = true;
       const o = q.options[+btn.dataset.i];
@@ -445,15 +586,15 @@ function renderChoice(host, q, onDone) {
 
 function renderMatch(host, q, onDone) {
   const cards = shuffle(q.pairs.flatMap((p, i) => [
-    { html: p.left.html, cls: p.left.cls || '', pair: i },
-    { html: p.right.html, cls: p.right.cls || '', pair: i },
+    { html: p.left.html, cls: p.left.cls || '', say: p.left.say, lang: p.left.lang, pair: i },
+    { html: p.right.html, cls: p.right.cls || '', say: p.right.say, lang: p.right.lang, pair: i },
   ]));
   host.innerHTML = `
-    <div class="prompt"><div class="prompt-text">${q.prompt.text || 'Match the pairs!'}</div></div>
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}><div class="prompt-text">${q.prompt.text || 'Match the pairs!'}</div></div></div>
     <div class="match-grid">
-      ${cards.map((c, i) => `<button class="match-card ${c.cls}" data-i="${i}">${c.html}</button>`).join('')}
+      ${cards.map((c, i) => `<button class="match-card ${c.cls}" data-i="${i}"${c.say ? ` data-say="${encodeURIComponent(c.say)}" data-lang="${c.lang || ''}"` : ''}>${c.html}</button>`).join('')}
     </div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   let sel = null, matched = 0, errors = 0;
   host.querySelectorAll('.match-card').forEach(btn => {
@@ -482,16 +623,20 @@ function renderMatch(host, q, onDone) {
 
 function renderHunt(host, q, onDone) {
   const total = q.tiles.filter(t => t.match).length;
+  // When speech is available the target is AUDIO-ONLY (big 🔊 replay button),
+  // so children must listen/remember rather than shape-match the text.
+  // The written prompt is the fallback for devices without sound.
+  const listening = !!q.prompt.speak && speechAvailable();
   host.innerHTML = `
-    <div class="prompt">
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}>
       ${q.prompt.html || ''}
-      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
-      <div class="prompt-text">${q.prompt.text || ''}</div>
-    </div>
+      ${listening ? spkBtn(q.prompt.speak, true, q.prompt.lang) : ''}
+      ${listening ? '' : `<div class="prompt-text">${q.prompt.text || ''}</div>`}
+    </div></div>
     <div class="hunt-grid">
       ${q.tiles.map((t, i) => `<button class="hunt-tile" data-i="${i}">${t.html}</button>`).join('')}
     </div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   let found = 0, errors = 0, finished = false;
   host.querySelectorAll('.hunt-tile').forEach(btn => {
@@ -514,14 +659,14 @@ function renderHunt(host, q, onDone) {
 
 function renderBuild(host, q, onDone) {
   host.innerHTML = `
-    <div class="prompt">
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}>
       ${q.prompt.html || ''}
-      ${q.prompt.speak ? spkBtn(q.prompt.speak, true) : ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak, true, q.prompt.lang) : ''}
       <div class="prompt-text">${q.prompt.text || ''}</div>
-    </div>
+    </div></div>
     <div class="build-slots"></div>
     <div class="tiles"></div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   const slotsEl = host.querySelector('.build-slots');
   const tilesEl = host.querySelector('.tiles');
@@ -578,7 +723,94 @@ function renderBuild(host, q, onDone) {
   }
 }
 
-const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild };
+// ---------- piano renderer ----------
+function renderPiano(host, q, onDone) {
+  host.innerHTML = `
+    <div class="prompt"><div${speakable(q.prompt.speak)}>
+      ${q.prompt.html || ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div></div>
+    <div class="piano-replay">
+      ${q.mode === 'copy' ? '<button class="btn secondary" id="replayBtn">🎵 Hear the tune</button>' : ''}
+      ${q.hearOnly ? '<button class="btn secondary" id="replayBtn">🎵 Hear the note</button>' : ''}
+    </div>
+    <div class="piano">
+      ${q.keys.map((k, i) => `<div class="piano-key" data-i="${i}" data-note="${k.n}" style="background:${k.colour};color:${NOTE_TEXT[k.n]}">${q.labelKeys ? k.n : ''}</div>`).join('')}
+    </div>`;
+
+  const keyEls = [...host.querySelectorAll('.piano-key')];
+  const keyFreq = n => q.keys.find(k => k.n === n).freq;
+  const playTune = () => playNotes(q.sequence.map(keyFreq), 600);
+
+  // Play notes only AFTER the spoken instruction finishes, so they never overlap.
+  // (Safety-net timer covers devices where speech is unavailable or onend doesn't fire.)
+  const startPlayback = () => {
+    if (q.mode === 'copy') playTune();
+    else if (q.hearOnly) playNote(keyFreq(q.target));
+  };
+  if (q.mode === 'copy' || q.hearOnly) {
+    let played = false;
+    const start = () => { if (!played) { played = true; startPlayback(); } };
+    if (q.prompt.speak && speechAvailable()) {
+      stopSpeak(); // clear any leftover praise/instruction from the previous screen
+      speak(q.prompt.speak, { onend: () => setTimeout(start, 300) });
+      setTimeout(start, 4500); // safety net
+    } else {
+      setTimeout(start, 600);
+    }
+  } else {
+    speakPrompt(q.prompt);
+  }
+
+  const replay = host.querySelector('#replayBtn');
+  if (replay) replay.onclick = () => { if (q.mode === 'copy') playTune(); else playNote(keyFreq(q.target)); };
+
+  if (q.mode === 'find') {
+    let answered = false;
+    keyEls.forEach(el => {
+      el.onclick = () => {
+        const k = q.keys[+el.dataset.i];
+        playNote(k.freq);
+        if (answered) return;
+        answered = true;
+        if (k.n === q.target) {
+          el.classList.add('hit');
+          setTimeout(() => onDone(true), 1000);
+        } else {
+          el.classList.add('bad');
+          keyEls.filter(e => e.dataset.note === q.target).forEach(e => e.classList.add('target-flash'));
+          setTimeout(() => playNote(keyFreq(q.target)), 700); // let them hear the right note
+          setTimeout(() => onDone(false), 2000);
+        }
+      };
+    });
+  } else {
+    // copy mode: repeat the tune note-by-note; a mistake restarts the sequence
+    let idx = 0, errors = 0, finished = false;
+    keyEls.forEach(el => {
+      el.onclick = () => {
+        const k = q.keys[+el.dataset.i];
+        playNote(k.freq);
+        if (finished) return;
+        if (k.n === q.sequence[idx]) {
+          el.classList.add('hit');
+          setTimeout(() => el.classList.remove('hit'), 450);
+          idx++;
+          if (idx === q.sequence.length) { finished = true; setTimeout(() => onDone(errors === 0), 1000); }
+        } else {
+          errors++;
+          el.classList.add('bad');
+          setTimeout(() => el.classList.remove('bad'), 500);
+          idx = 0;
+          setTimeout(playTune, 1100); // hear it again and retry
+        }
+      };
+    });
+  }
+}
+
+const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano };
 
 // ---------- session runner ----------
 const PRAISE = ['Well done!', 'Amazing!', 'Super star!', 'Brilliant!', 'You did it!'];
@@ -646,26 +878,25 @@ function renderSummary() {
   const msg = stars === rounds ? 'Perfect! You are a superstar! 🌟'
     : stars >= rounds / 2 ? 'Great work! Keep it up! 💪'
     : 'Good try! Practice makes perfect! 🌱';
-  const chips = Object.entries(session.methods).map(([m, r]) => {
-    const mm = METHOD_META[m];
-    return `<span class="chip">${mm.icon} ${mm.name}: ${r.c}/${r.a}</span>`;
-  }).join('');
-  const best = bestMethod(session.skillId);
+  // Child-facing summary: stars + celebration + big friendly buttons only.
+  // (Method results live in the Parent Dashboard.)
   const skillId = session.skillId;
 
   app.innerHTML = `
     <div class="summary-card">
       <div class="summary-stars">${'⭐'.repeat(stars)}${'☆'.repeat(rounds - stars)}</div>
       <div class="summary-msg">${msg}</div>
-      <div class="method-chips">${chips}</div>
-      ${best ? `<p class="summary-msg" style="font-size:1.05rem;color:#777">You learn ${skill.name} best with ${METHOD_META[best].icon} <b>${METHOD_META[best].name}</b> — we'll show you more of that!</p>` : ''}
       <div class="btn-row">
-        <button class="btn" id="againBtn">🔁 Play Again</button>
-        <button class="btn secondary" id="homeBtn">🏠 Home</button>
+        <button class="btn again-big" id="againBtn" aria-label="Play again">
+          <span class="big-emoji">🔁</span><span class="btn-label">Play again</span>
+        </button>
+        <button class="btn secondary home-big" id="homeBtn" aria-label="Home">
+          <span class="big-emoji">🏠</span><span class="btn-label">Home</span>
+        </button>
       </div>
     </div>`;
-  confetti();
-  speak(msg);
+  if (stars === rounds) starRain(); else confetti();
+  speak(`${msg} Tap the big orange button to play again, or tap the house to try something else.`);
   document.getElementById('againBtn').onclick = () => startSession(skillId);
   document.getElementById('homeBtn').onclick = () => nav('home');
 }
@@ -681,5 +912,21 @@ function confetti() {
     s.style.fontSize = (1 + Math.random() * 1.4) + 'rem';
     document.body.appendChild(s);
     setTimeout(() => s.remove(), 4200);
+  }
+}
+
+// Perfect score (5/5): a sky full of glowing stars rains down over ~5 seconds
+function starRain() {
+  const emos = ['⭐', '🌟', '✨', '💫'];
+  for (let i = 0; i < 90; i++) {
+    const s = document.createElement('span');
+    s.className = 'confetti star';
+    s.textContent = pick(emos);
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.animationDelay = (Math.random() * 2.5) + 's';
+    s.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+    s.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 8000);
   }
 }

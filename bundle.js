@@ -1,33 +1,185 @@
 // ===== speech.js =====
-// Web Speech API wrapper — child-friendly en-GB voice where available.
+// Web Speech API wrapper — prefers a soft female voice; parents can override
+// the choice from the dashboard (stored per device in settings).
+
 let voice = null;
+let preferredVoiceName = null;
+
+// Ranked soft/female voices across platforms:
+//   iOS/macOS: Serena, Kate, Stephanie, Martha, Shelley…
+//   Chrome:    "Google UK English Female"
+//   Windows:   Hazel (en-GB), Zira/Susan (en-US)
+const FEMALE_PREFERENCES = [
+  'serena', 'kate', 'stephanie', 'google uk english female', 'hazel',
+  'shelley', 'sandy', 'flo', 'samantha', 'zira', 'susan', 'victoria',
+  'moira', 'tessa', 'allison', 'ava', 'zoe', 'martha',
+];
+
+const isGB = v => /en[-_]GB/i.test(v.lang);
+
+function findByHints(voices) {
+  for (const hint of FEMALE_PREFERENCES) {
+    const v = voices.find(x => x.name.toLowerCase().includes(hint));
+    if (v) return v;
+  }
+  return null;
+}
+
+function speechAvailable() {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window;
+}
+
+function getVoices() {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  return window.speechSynthesis.getVoices();
+}
 
 function pickVoice() {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  const vs = window.speechSynthesis.getVoices();
-  voice = vs.find(v => /en-GB/i.test(v.lang) && /female|google uk english female|kate|stephanie|serena/i.test(v.name))
-       || vs.find(v => /en-GB/i.test(v.lang))
-       || vs[0] || null;
+  const vs = getVoices();
+  if (!vs.length) return;
+  // 1) parent's saved choice
+  if (preferredVoiceName) {
+    const chosen = vs.find(v => v.name === preferredVoiceName);
+    if (chosen) { voice = chosen; return; }
+  }
+  // 2) British female first, then any soft female, then any British, then any English
+  const gb = vs.filter(isGB);
+  voice = findByHints(gb)
+       || gb.find(v => /female|grandma|shelley|sandy|flo/i.test(v.name))
+       || findByHints(vs)
+       || vs.find(v => /female/i.test(v.name))
+       || gb[0]
+       || vs.find(v => /^en/i.test(v.lang))
+       || vs[0];
 }
+
+function setVoicePreference(name) {
+  preferredVoiceName = name || null;
+  pickVoice();
+}
+
+// Browsers load voices asynchronously — let screens re-populate when they arrive
+const voiceListeners = new Set();
+function onVoicesChanged(fn) {
+  voiceListeners.add(fn);
+  return () => voiceListeners.delete(fn);
+}
+
+function handleVoicesChanged() {
+  pickVoice();
+  voiceListeners.forEach(fn => { try { fn(); } catch { /* listener gone */ } });
+}
+
+function currentVoiceName() { return voice ? voice.name : null; }
 
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   pickVoice();
-  window.speechSynthesis.onvoiceschanged = pickVoice;
+  window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+  if (window.speechSynthesis.addEventListener) {
+    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+  }
+  // nudge browsers that defer loading the voice list (Chrome especially)
+  getVoices();
+  setTimeout(getVoices, 300);
+}
+
+// Emojis are for the screen only — strip them so the voice never reads out
+// things like "glowing star" or "flexed biceps".
+function stripEmoji(text) {
+  return String(text)
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Pick the nicest voice for another language (Spanish/French lessons),
+// preferring a soft female voice when one exists on this device.
+function voiceForLang(lang) {
+  const prefix = String(lang).split('-')[0].toLowerCase();
+  const vs = getVoices().filter(v => (v.lang || '').toLowerCase().startsWith(prefix));
+  return findByHints(vs) || vs.find(v => /female/i.test(v.name)) || vs[0] || null;
 }
 
 function speak(text, opts = {}) {
+  text = stripEmoji(text);
   if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
+  if (!opts.onend) window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  if (voice) u.voice = voice;
-  u.lang = 'en-GB';
-  u.rate = opts.rate ?? 0.9;   // slightly slower for little ears
-  u.pitch = opts.pitch ?? 1.15;
+  if (opts.lang) {
+    const lv = voiceForLang(opts.lang);
+    if (lv) { u.voice = lv; u.lang = lv.lang; } else { u.lang = opts.lang; }
+  } else if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = 'en-GB'; }
+  u.rate = opts.rate ?? 0.85;    // gentle pace for little ears
+  u.pitch = opts.pitch ?? 1.05;  // soft, warm tone
+  if (opts.onend) u.onend = opts.onend;
   window.speechSynthesis.speak(u);
+}
+
+// Speak a sequence of parts, e.g. English instruction then a Spanish word:
+//   speakSeq([{ text: 'Listen!' }, { text: 'gato', lang: 'es-ES' }])
+function speakSeq(parts) {
+  if (!speechAvailable() || !parts || !parts.length) return;
+  window.speechSynthesis.cancel();
+  const run = i => {
+    if (i >= parts.length) return;
+    speak(parts[i].text, { lang: parts[i].lang, onend: () => run(i + 1) });
+  };
+  run(0);
 }
 
 function stopSpeak() {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+// ===== audio.js =====
+// Web Audio: gentle piano-like tones for the piano module.
+// Two oscillators (fundamental + soft octave harmonic) with a plucked envelope.
+
+let ctx = null;
+
+function audioCtx() {
+  if (typeof window === 'undefined') return null;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  try {
+    ctx = ctx || new AC();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  } catch { return null; }
+}
+
+function playNote(freq, dur = 0.8) {
+  const c = audioCtx();
+  if (!c) return;
+  try {
+    const t = c.currentTime;
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    const o1 = c.createOscillator();
+    o1.type = 'triangle';
+    o1.frequency.value = freq;
+
+    const o2 = c.createOscillator();
+    o2.type = 'sine';
+    o2.frequency.value = freq * 2;
+    const g2 = c.createGain();
+    g2.gain.value = 0.22;
+
+    o1.connect(gain);
+    o2.connect(g2);
+    g2.connect(gain);
+    gain.connect(c.destination);
+    o1.start(t); o2.start(t);
+    o1.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+  } catch { /* audio unavailable — ignore */ }
+}
+
+// Play a little tune: array of frequencies spaced by `gap` ms
+function playNotes(freqs, gap = 600) {
+  freqs.forEach((f, i) => setTimeout(() => playNote(f), i * gap));
 }
 
 // ===== engine.js =====
@@ -45,6 +197,22 @@ const METHOD_META = {
 
 const AVATARS = ['🦊', '🐰', '🦁', '🐸', '🐼', '🦄', '🐯', '🐧', '🦉', '🐳'];
 
+// Each avatar re-themes the whole app: main colour, dark "3D base" shade, soft tint.
+const DEFAULT_THEME = { c: '#5f27cd', dark: '#431b96', soft: '#f0e8ff' };
+const AVATAR_THEMES = {
+  '🦊': { c: '#ff8c42', dark: '#d96a1e', soft: '#ffe8d6' }, // fox — orange
+  '🐰': { c: '#ff6b9d', dark: '#d94f80', soft: '#ffe0eb' }, // bunny — pink
+  '🦁': { c: '#f59f00', dark: '#c77e00', soft: '#ffedcc' }, // lion — golden
+  '🐸': { c: '#10ac84', dark: '#0b8566', soft: '#d4f3e9' }, // frog — green
+  '🐼': { c: '#576574', dark: '#3d4a5c', soft: '#e2e8f0' }, // panda — slate
+  '🦄': { c: '#845ef2', dark: '#6741d9', soft: '#e9e2fd' }, // unicorn — purple
+  '🐯': { c: '#f76707', dark: '#c94f00', soft: '#ffe3d1' }, // tiger — deep orange
+  '🐧': { c: '#2e86de', dark: '#1d68b3', soft: '#d9eafb' }, // penguin — blue
+  '🦉': { c: '#a1723f', dark: '#7d5730', soft: '#f1e4d4' }, // owl — brown
+  '🐳': { c: '#00b8d4', dark: '#0090a8', soft: '#d3f3fa' }, // whale — cyan
+};
+function themeFor(avatar) { return AVATAR_THEMES[avatar] || DEFAULT_THEME; }
+
 const KEY = 'brightsteps.v2';
 const OLD_KEY = 'brightsteps.v1'; // single-profile data from v1 is migrated
 
@@ -57,7 +225,7 @@ const store = typeof localStorage !== 'undefined'
 function uid() { return 'p' + Math.random().toString(36).slice(2, 9); }
 
 function fresh() {
-  return { active: null, profiles: {}, settings: { override: null } };
+  return { active: null, profiles: {}, settings: { override: null, voiceName: null } };
 }
 
 function migrateV1(old) {
@@ -71,6 +239,7 @@ function migrateV1(old) {
         avatar: AVATARS[0],
         stats: old.stats || {},
         progress: old.progress || {},
+        hiddenSkills: [],
         createdAt: Date.now(),
       },
     },
@@ -110,6 +279,7 @@ function addProfile(name, avatar) {
     avatar: avatar || AVATARS[0],
     stats: {},
     progress: {},
+    hiddenSkills: [],   // parent-controlled per-child module visibility
     createdAt: Date.now(),
   };
   state.active = id;
@@ -131,6 +301,13 @@ function removeProfile(id) {
   delete state.profiles[id];
   if (state.active === id) state.active = listProfiles()[0]?.id || null;
   save();
+}
+
+// Is a skill shown on this child's home screen? (default: yes)
+function isSkillVisible(profile, skillId) {
+  const p = profile || activeProfile();
+  if (!p) return true;
+  return !(p.hiddenSkills || []).includes(skillId);
 }
 
 // Overall accuracy across all skills for one profile (or the active one)
@@ -247,6 +424,131 @@ const SKILLS = {
   reading: {
     id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 6,
     levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band'],
+  },
+  piano: {
+    id: 'piano', name: 'Piano', icon: '🎹', colour: '#845ef2', maxLevel: 4,
+    levelNames: ['C D E', 'C to G', 'one octave', 'two octaves'],
+  },
+  spanish: {
+    id: 'spanish', name: 'Spanish', icon: '🇪🇸', colour: '#f59f00', maxLevel: 6,
+    levelNames: ['greetings', 'numbers 1-5', 'numbers 6-10', 'colours', 'animals', 'food'],
+  },
+  french: {
+    id: 'french', name: 'French', icon: '🇫🇷', colour: '#4dabf7', maxLevel: 6,
+    levelNames: ['greetings', 'numbers 1-5', 'numbers 6-10', 'colours', 'animals', 'food'],
+  },
+};
+
+// ---------------- piano ----------------
+// Official Boomwhackers / Chroma-Notes colours — the de-facto standard in UK
+// primary school music (C=red … B=magenta), so app learning transfers to
+// classroom instruments. Source: funmusicco.com Boomwhacker colour chart.
+const NOTE_COLOURS = {
+  C: '#EB2427', D: '#F6851F', E: '#FBED1B', F: '#6BBE46',
+  G: '#0C9648', A: '#80539F', B: '#E14197',
+};
+
+// Letter-label text colour per key: dark on the light keys (E, F) so labels stay readable
+const NOTE_TEXT = {
+  C: '#ffffff', D: '#ffffff', E: '#3d3d3d', F: '#3d3d3d',
+  G: '#ffffff', A: '#ffffff', B: '#ffffff',
+};
+
+// Frequencies for two octaves (C4-B4, C5-B5)
+const PIANO_OCTAVES = [
+  { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392.00, A: 440.00, B: 493.88 },
+  { C: 523.25, D: 587.33, E: 659.25, F: 698.46, G: 783.99, A: 880.00, B: 987.77 },
+];
+
+const PIANO_LEVEL_NOTES = {
+  1: ['C', 'D', 'E'],
+  2: ['C', 'D', 'E', 'F', 'G'],
+  3: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+  4: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], // across two octaves
+};
+
+// ---------------- languages ----------------
+// Item shape: { w: word, en: English meaning, emoji?, num?, colour? }
+const LANG_CONTENT = {
+  spanish: {
+    lang: 'es-ES',
+    levels: {
+      1: [
+        { w: 'hola', en: 'hello', emoji: '👋' },
+        { w: 'adiós', en: 'goodbye', emoji: '🚪' },
+        { w: 'gracias', en: 'thank you', emoji: '🙏' },
+        { w: 'por favor', en: 'please', emoji: '🌈' },
+        { w: 'sí', en: 'yes', emoji: '✅' },
+        { w: 'no', en: 'no', emoji: '❌' },
+      ],
+      2: [
+        { w: 'uno', en: 'one', num: 1 }, { w: 'dos', en: 'two', num: 2 },
+        { w: 'tres', en: 'three', num: 3 }, { w: 'cuatro', en: 'four', num: 4 },
+        { w: 'cinco', en: 'five', num: 5 },
+      ],
+      3: [
+        { w: 'seis', en: 'six', num: 6 }, { w: 'siete', en: 'seven', num: 7 },
+        { w: 'ocho', en: 'eight', num: 8 }, { w: 'nueve', en: 'nine', num: 9 },
+        { w: 'diez', en: 'ten', num: 10 },
+      ],
+      4: [
+        { w: 'rojo', en: 'red', colour: '#e74c3c' }, { w: 'azul', en: 'blue', colour: '#3498db' },
+        { w: 'amarillo', en: 'yellow', colour: '#f1c40f' }, { w: 'verde', en: 'green', colour: '#2ecc71' },
+        { w: 'naranja', en: 'orange', colour: '#e67e22' }, { w: 'rosa', en: 'pink', colour: '#ff8fb2' },
+        { w: 'negro', en: 'black', colour: '#333333' }, { w: 'blanco', en: 'white', colour: '#fdfdfd' },
+      ],
+      5: [
+        { w: 'gato', en: 'cat', emoji: '🐱' }, { w: 'perro', en: 'dog', emoji: '🐶' },
+        { w: 'pájaro', en: 'bird', emoji: '🐦' }, { w: 'pez', en: 'fish', emoji: '🐟' },
+        { w: 'caballo', en: 'horse', emoji: '🐴' }, { w: 'vaca', en: 'cow', emoji: '🐮' },
+        { w: 'cerdo', en: 'pig', emoji: '🐷' }, { w: 'pato', en: 'duck', emoji: '🦆' },
+      ],
+      6: [
+        { w: 'manzana', en: 'apple', emoji: '🍎' }, { w: 'leche', en: 'milk', emoji: '🥛' },
+        { w: 'pan', en: 'bread', emoji: '🍞' }, { w: 'queso', en: 'cheese', emoji: '🧀' },
+        { w: 'agua', en: 'water', emoji: '💧' }, { w: 'zumo', en: 'juice', emoji: '🧃' },
+      ],
+    },
+  },
+  french: {
+    lang: 'fr-FR',
+    levels: {
+      1: [
+        { w: 'bonjour', en: 'hello', emoji: '👋' },
+        { w: 'au revoir', en: 'goodbye', emoji: '🚪' },
+        { w: 'merci', en: 'thank you', emoji: '🙏' },
+        { w: "s'il vous plaît", en: 'please', emoji: '🌈' },
+        { w: 'oui', en: 'yes', emoji: '✅' },
+        { w: 'non', en: 'no', emoji: '❌' },
+      ],
+      2: [
+        { w: 'un', en: 'one', num: 1 }, { w: 'deux', en: 'two', num: 2 },
+        { w: 'trois', en: 'three', num: 3 }, { w: 'quatre', en: 'four', num: 4 },
+        { w: 'cinq', en: 'five', num: 5 },
+      ],
+      3: [
+        { w: 'six', en: 'six', num: 6 }, { w: 'sept', en: 'seven', num: 7 },
+        { w: 'huit', en: 'eight', num: 8 }, { w: 'neuf', en: 'nine', num: 9 },
+        { w: 'dix', en: 'ten', num: 10 },
+      ],
+      4: [
+        { w: 'rouge', en: 'red', colour: '#e74c3c' }, { w: 'bleu', en: 'blue', colour: '#3498db' },
+        { w: 'jaune', en: 'yellow', colour: '#f1c40f' }, { w: 'vert', en: 'green', colour: '#2ecc71' },
+        { w: 'orange', en: 'orange', colour: '#e67e22' }, { w: 'rose', en: 'pink', colour: '#ff8fb2' },
+        { w: 'noir', en: 'black', colour: '#333333' }, { w: 'blanc', en: 'white', colour: '#fdfdfd' },
+      ],
+      5: [
+        { w: 'chat', en: 'cat', emoji: '🐱' }, { w: 'chien', en: 'dog', emoji: '🐶' },
+        { w: 'oiseau', en: 'bird', emoji: '🐦' }, { w: 'poisson', en: 'fish', emoji: '🐟' },
+        { w: 'cheval', en: 'horse', emoji: '🐴' }, { w: 'vache', en: 'cow', emoji: '🐮' },
+        { w: 'cochon', en: 'pig', emoji: '🐷' }, { w: 'canard', en: 'duck', emoji: '🦆' },
+      ],
+      6: [
+        { w: 'pomme', en: 'apple', emoji: '🍎' }, { w: 'lait', en: 'milk', emoji: '🥛' },
+        { w: 'pain', en: 'bread', emoji: '🍞' }, { w: 'fromage', en: 'cheese', emoji: '🧀' },
+        { w: 'eau', en: 'water', emoji: '💧' }, { w: 'jus', en: 'juice', emoji: '🧃' },
+      ],
+    },
   },
 };
 
@@ -402,10 +704,6 @@ const READING_BANDS = [
 //   build:  { type, prompt:{html,speak,text}, tiles:[str], answer:[str] }
 // ---------------------------------------------------------------------------
 
-
-
-
-
 // ---------- small helpers ----------
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -418,8 +716,23 @@ const shuffle = a => {
   return r;
 };
 const sample = (a, n) => shuffle(a).slice(0, n);
-const spkBtn = (text, big = false) =>
-  text ? `<button class="speaker${big ? ' big' : ''}" data-say="${encodeURIComponent(text)}" aria-label="Hear it">🔊</button>` : '';
+const spkBtn = (text, big = false, lang = null) =>
+  text ? `<button class="speaker${big ? ' big' : ''}" data-say="${encodeURIComponent(text)}"${lang ? ` data-lang="${lang}"` : ''} aria-label="Hear it">🔊</button>` : '';
+
+// span version for use INSIDE option buttons (nested <button> is invalid HTML)
+const spkMini = (text, lang = null) =>
+  text ? `<span class="speaker mini-spk" data-say="${encodeURIComponent(text)}"${lang ? ` data-lang="${lang}"` : ''} role="button" aria-label="Hear it">🔊</span>` : '';
+
+// Makes an element replay its spoken instruction when tapped
+const speakable = (text, lang = null) =>
+  text ? ` class="speakable" data-say="${encodeURIComponent(text)}"${lang ? ` data-lang="${lang}"` : ''}` : '';
+
+// Auto-speak a prompt: bilingual sequence if present, else plain/lang speech
+function speakPrompt(p) {
+  if (!p) return;
+  if (p.speakSeq) speakSeq(p.speakSeq);
+  else if (p.speak) speak(p.speak, { lang: p.lang });
+}
 
 function nav(where) {
   stopSpeak();
@@ -439,15 +752,22 @@ function answerOptions(ans, count = 3) {
   return shuffle([...set]).map(v => ({ html: `${v}`, value: v }));
 }
 
-// tens shown as 🟦 blocks, ones as an emoji
+// Numbers shown as real circled groups of ten items + loose ones —
+// no abstract key needed: children can see ten inside every circle and
+// simply count in tens (10, 20, 30...) then count on the ones.
 function blocksFor(n, big = false) {
   const tens = Math.floor(n / 10), ones = n % 10;
+  const size = big ? (n > 12 ? '1rem' : '2.6rem') : (n > 12 ? '0.7rem' : '1.3rem');
   let s = '';
-  if (tens) s += '🟦'.repeat(tens);
-  if (ones) s += pick(NUM_EMOJI).repeat(ones);
+  if (tens) {
+    const emo = pick(NUM_EMOJI);
+    for (let i = 0; i < tens; i++) {
+      s += `<span class="ten-group">${emo.repeat(10)}</span>`;
+    }
+  }
+  if (ones) s += `<span class="ones-group">${pick(NUM_EMOJI).repeat(ones)}</span>`;
   if (!s) s = '<span style="font-size:1.1rem;color:#999">(none)</span>';
-  const size = big ? (n > 12 ? '1.5rem' : '2.6rem') : (n > 12 ? '0.85rem' : '1.3rem');
-  return `<span class="mini" style="font-size:${size};line-height:1.6;display:inline-block;max-width:300px">${s}</span>`;
+  return `<span class="mini" style="font-size:${size};line-height:1.9;display:inline-block;max-width:${big ? '640px' : '300px'}">${s}</span>`;
 }
 
 // ---------- numbers ----------
@@ -470,7 +790,7 @@ function genNumbers(level, method) {
       prompt: {
         html: `<div class="emoji-row">${blocksFor(target, true)}</div>`,
         text: 'How many can you see?',
-        speak: level >= 4 ? 'How many? Each blue block is ten.' : 'How many can you see?',
+        speak: level >= 4 ? 'How many? Count in tens!' : 'How many can you see?',
       },
       options: answerOptions(target), answer: target,
     };
@@ -700,8 +1020,9 @@ function genColours(level, method) {
       .map(n => ({ html: swatch(n), value: n, cls: 'swatch-option' }));
     const prompt = method === 'look'
       ? {
-          // at the top level the word is printed in plain black so it must be read
-          html: `<div class="word" style="color:${level >= 4 ? '#333' : COLOURS[target]}">${target}</div>`,
+          // the word is always plain dark grey — never printed in its own colour,
+          // so the child can't just match the ink to the swatch
+          html: `<div class="word" style="color:#333">${target}</div>`,
           text: 'Find this colour!', speak: `Find the colour ${target}.`,
         }
       : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the colour!', speak: `Tap the colour ${target}.` };
@@ -779,15 +1100,127 @@ function genReading(level, method) {
       options, answer: item.a,
     };
   }
-  // look: child reads the sentence (audio only on request); the question is spoken
+  // look: child reads the sentence (audio only on request); the question is spoken.
+  // The sentence card itself is tappable to hear the sentence read aloud.
   return {
     type: 'choice',
-    prompt: { html: `<div class="sentence-card">${item.text} ${spkBtn(item.text)}</div>`, text: item.q, speak: item.q },
+    prompt: { html: `<div class="sentence-card speakable" data-say="${encodeURIComponent(item.text)}">${item.text} ${spkBtn(item.text)}</div>`, text: item.q, speak: item.q },
     options, answer: item.a,
   };
 }
 
 // ---------- dispatcher ----------
+// ---------- languages (Spanish / French) ----------
+function genLanguage(level, method, content) {
+  const L = content.lang;
+  const items = content.levels[level];
+  const target = pick(items);
+  const others = items.filter(i => i !== target);
+  const visual = it => it.colour
+    ? `<span class="swatch" style="background:${it.colour}"></span>`
+    : (it.num != null ? `${it.num}` : it.emoji);
+  const bigVisual = it => it.colour
+    ? `<span class="swatch" style="background:${it.colour};width:110px;height:110px"></span>`
+    : (it.num != null ? `<div class="emoji-row">${pick(NUM_EMOJI).repeat(it.num)}</div>` : `<div class="emoji-row">${it.emoji}</div>`);
+
+  if (method === 'look') {
+    // picture/count/colour shown; choose the matching word (options can be heard first)
+    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+      html: `<span class="opt-word">${it.w}</span>${spkMini(it.w, L)}`,
+      value: it.w, cls: 'word-option',
+    }));
+    return {
+      type: 'choice',
+      prompt: { html: bigVisual(target), text: 'Tap the word that matches!', speak: 'Tap the word that matches the picture.' },
+      options, answer: target.w,
+    };
+  }
+  if (method === 'hear') {
+    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+      html: visual(it), value: it.w, cls: it.colour ? 'swatch-option' : '',
+    }));
+    return {
+      type: 'choice',
+      prompt: {
+        html: '<div class="big-letter">👂</div>', text: 'Listen, then tap!',
+        speak: target.w, lang: L,
+        speakSeq: [{ text: 'Listen, then tap what you hear!' }, { text: target.w, lang: L }],
+      },
+      options, answer: target.w,
+    };
+  }
+  if (method === 'match') {
+    const three = sample(items, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each word to its picture!', speak: 'Match the words to the pictures. Tap a word to hear it!' },
+      pairs: three.map(it => ({
+        left: { html: it.w, cls: 'sentence-mini', say: it.w, lang: L },
+        right: { html: visual(it) },
+      })),
+    };
+  }
+  // play → build the word from letter tiles (single words only)
+  const buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'"));
+  const t = buildPool.includes(target) ? target : pick(buildPool);
+  return {
+    type: 'build',
+    prompt: {
+      html: bigVisual(t),
+      text: 'Build the word!',
+      speak: t.w, lang: L,
+      speakSeq: [{ text: `Build the word for ${t.en}!` }, { text: t.w, lang: L }],
+    },
+    tiles: t.w.split(''), answer: t.w.split(''),
+  };
+}
+
+// ---------- piano ----------
+function pianoKeysFor(level) {
+  const names = PIANO_LEVEL_NOTES[level];
+  const octaves = level >= 4 ? 2 : 1;
+  const keys = [];
+  for (let o = 0; o < octaves; o++) {
+    names.forEach(n => keys.push({ n, freq: PIANO_OCTAVES[o][n], colour: NOTE_COLOURS[n] }));
+  }
+  return keys;
+}
+
+function genPiano(level, method) {
+  const keys = pianoKeysFor(level);
+  const names = PIANO_LEVEL_NOTES[level];
+  if (method === 'match') {
+    const notes = sample(names, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each note to its colour!', speak: 'Match the notes to their colours.' },
+      pairs: notes.map(n => ({
+        left: { html: n },
+        right: { html: `<span class="swatch" style="background:${NOTE_COLOURS[n]}"></span>` },
+      })),
+    };
+  }
+  if (method === 'play') {
+    const len = level === 1 ? 2 : level <= 3 ? 3 : 4;
+    const sequence = Array.from({ length: len }, () => pick(names));
+    return {
+      type: 'piano', mode: 'copy', keys, sequence, labelKeys: level <= 2,
+      prompt: { text: 'Listen, then copy my tune!', speak: 'Listen to my tune, then copy it!' },
+    };
+  }
+  const target = pick(names);
+  if (method === 'hear') {
+    return {
+      type: 'piano', mode: 'find', keys, target, hearOnly: true, labelKeys: level <= 2,
+      prompt: { text: 'Listen, then find the note!', speak: 'Listen to the note, then find it on the piano!' },
+    };
+  }
+  return {
+    type: 'piano', mode: 'find', keys, target, labelKeys: level <= 2,
+    prompt: { html: `<div class="big-letter">${target}</div>`, text: 'Find this key!', speak: `Find the key ${target}.` },
+  };
+}
+
 function generateRound(skillId, level, method) {
   switch (skillId) {
     case 'numbers': return genNumbers(level, method);
@@ -796,6 +1229,9 @@ function generateRound(skillId, level, method) {
     case 'words':   return genWords(level, method);
     case 'colours': return genColours(level, method);
     case 'reading': return genReading(level, method);
+    case 'piano':   return genPiano(level, method);
+    case 'spanish': return genLanguage(level, method, LANG_CONTENT.spanish);
+    case 'french':  return genLanguage(level, method, LANG_CONTENT.french);
     default: throw new Error(`Unknown skill: ${skillId}`);
   }
 }
@@ -803,19 +1239,20 @@ function generateRound(skillId, level, method) {
 // ---------- renderers ----------
 function renderChoice(host, q, onDone) {
   host.innerHTML = `
-    <div class="prompt">
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}>
       ${q.prompt.html || ''}
-      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak, false, q.prompt.lang) : ''}
       <div class="prompt-text">${q.prompt.text || ''}</div>
-    </div>
+    </div></div>
     <div class="options">
       ${q.options.map((o, i) => `<button class="option ${o.cls || ''}" data-i="${i}">${o.html}</button>`).join('')}
     </div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   let answered = false;
   host.querySelectorAll('.option').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = e => {
+      if (e.target.closest('[data-say]')) return; // tapped a 🔊 inside the option — hear it, don't answer
       if (answered) return;
       answered = true;
       const o = q.options[+btn.dataset.i];
@@ -835,15 +1272,15 @@ function renderChoice(host, q, onDone) {
 
 function renderMatch(host, q, onDone) {
   const cards = shuffle(q.pairs.flatMap((p, i) => [
-    { html: p.left.html, cls: p.left.cls || '', pair: i },
-    { html: p.right.html, cls: p.right.cls || '', pair: i },
+    { html: p.left.html, cls: p.left.cls || '', say: p.left.say, lang: p.left.lang, pair: i },
+    { html: p.right.html, cls: p.right.cls || '', say: p.right.say, lang: p.right.lang, pair: i },
   ]));
   host.innerHTML = `
-    <div class="prompt"><div class="prompt-text">${q.prompt.text || 'Match the pairs!'}</div></div>
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}><div class="prompt-text">${q.prompt.text || 'Match the pairs!'}</div></div></div>
     <div class="match-grid">
-      ${cards.map((c, i) => `<button class="match-card ${c.cls}" data-i="${i}">${c.html}</button>`).join('')}
+      ${cards.map((c, i) => `<button class="match-card ${c.cls}" data-i="${i}"${c.say ? ` data-say="${encodeURIComponent(c.say)}" data-lang="${c.lang || ''}"` : ''}>${c.html}</button>`).join('')}
     </div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   let sel = null, matched = 0, errors = 0;
   host.querySelectorAll('.match-card').forEach(btn => {
@@ -872,16 +1309,20 @@ function renderMatch(host, q, onDone) {
 
 function renderHunt(host, q, onDone) {
   const total = q.tiles.filter(t => t.match).length;
+  // When speech is available the target is AUDIO-ONLY (big 🔊 replay button),
+  // so children must listen/remember rather than shape-match the text.
+  // The written prompt is the fallback for devices without sound.
+  const listening = !!q.prompt.speak && speechAvailable();
   host.innerHTML = `
-    <div class="prompt">
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}>
       ${q.prompt.html || ''}
-      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
-      <div class="prompt-text">${q.prompt.text || ''}</div>
-    </div>
+      ${listening ? spkBtn(q.prompt.speak, true, q.prompt.lang) : ''}
+      ${listening ? '' : `<div class="prompt-text">${q.prompt.text || ''}</div>`}
+    </div></div>
     <div class="hunt-grid">
       ${q.tiles.map((t, i) => `<button class="hunt-tile" data-i="${i}">${t.html}</button>`).join('')}
     </div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   let found = 0, errors = 0, finished = false;
   host.querySelectorAll('.hunt-tile').forEach(btn => {
@@ -904,14 +1345,14 @@ function renderHunt(host, q, onDone) {
 
 function renderBuild(host, q, onDone) {
   host.innerHTML = `
-    <div class="prompt">
+    <div class="prompt"><div${speakable(q.prompt.speak, q.prompt.lang)}>
       ${q.prompt.html || ''}
-      ${q.prompt.speak ? spkBtn(q.prompt.speak, true) : ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak, true, q.prompt.lang) : ''}
       <div class="prompt-text">${q.prompt.text || ''}</div>
-    </div>
+    </div></div>
     <div class="build-slots"></div>
     <div class="tiles"></div>`;
-  if (q.prompt.speak) speak(q.prompt.speak);
+  speakPrompt(q.prompt);
 
   const slotsEl = host.querySelector('.build-slots');
   const tilesEl = host.querySelector('.tiles');
@@ -968,7 +1409,94 @@ function renderBuild(host, q, onDone) {
   }
 }
 
-const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild };
+// ---------- piano renderer ----------
+function renderPiano(host, q, onDone) {
+  host.innerHTML = `
+    <div class="prompt"><div${speakable(q.prompt.speak)}>
+      ${q.prompt.html || ''}
+      ${q.prompt.speak ? spkBtn(q.prompt.speak) : ''}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div></div>
+    <div class="piano-replay">
+      ${q.mode === 'copy' ? '<button class="btn secondary" id="replayBtn">🎵 Hear the tune</button>' : ''}
+      ${q.hearOnly ? '<button class="btn secondary" id="replayBtn">🎵 Hear the note</button>' : ''}
+    </div>
+    <div class="piano">
+      ${q.keys.map((k, i) => `<div class="piano-key" data-i="${i}" data-note="${k.n}" style="background:${k.colour};color:${NOTE_TEXT[k.n]}">${q.labelKeys ? k.n : ''}</div>`).join('')}
+    </div>`;
+
+  const keyEls = [...host.querySelectorAll('.piano-key')];
+  const keyFreq = n => q.keys.find(k => k.n === n).freq;
+  const playTune = () => playNotes(q.sequence.map(keyFreq), 600);
+
+  // Play notes only AFTER the spoken instruction finishes, so they never overlap.
+  // (Safety-net timer covers devices where speech is unavailable or onend doesn't fire.)
+  const startPlayback = () => {
+    if (q.mode === 'copy') playTune();
+    else if (q.hearOnly) playNote(keyFreq(q.target));
+  };
+  if (q.mode === 'copy' || q.hearOnly) {
+    let played = false;
+    const start = () => { if (!played) { played = true; startPlayback(); } };
+    if (q.prompt.speak && speechAvailable()) {
+      stopSpeak(); // clear any leftover praise/instruction from the previous screen
+      speak(q.prompt.speak, { onend: () => setTimeout(start, 300) });
+      setTimeout(start, 4500); // safety net
+    } else {
+      setTimeout(start, 600);
+    }
+  } else {
+    speakPrompt(q.prompt);
+  }
+
+  const replay = host.querySelector('#replayBtn');
+  if (replay) replay.onclick = () => { if (q.mode === 'copy') playTune(); else playNote(keyFreq(q.target)); };
+
+  if (q.mode === 'find') {
+    let answered = false;
+    keyEls.forEach(el => {
+      el.onclick = () => {
+        const k = q.keys[+el.dataset.i];
+        playNote(k.freq);
+        if (answered) return;
+        answered = true;
+        if (k.n === q.target) {
+          el.classList.add('hit');
+          setTimeout(() => onDone(true), 1000);
+        } else {
+          el.classList.add('bad');
+          keyEls.filter(e => e.dataset.note === q.target).forEach(e => e.classList.add('target-flash'));
+          setTimeout(() => playNote(keyFreq(q.target)), 700); // let them hear the right note
+          setTimeout(() => onDone(false), 2000);
+        }
+      };
+    });
+  } else {
+    // copy mode: repeat the tune note-by-note; a mistake restarts the sequence
+    let idx = 0, errors = 0, finished = false;
+    keyEls.forEach(el => {
+      el.onclick = () => {
+        const k = q.keys[+el.dataset.i];
+        playNote(k.freq);
+        if (finished) return;
+        if (k.n === q.sequence[idx]) {
+          el.classList.add('hit');
+          setTimeout(() => el.classList.remove('hit'), 450);
+          idx++;
+          if (idx === q.sequence.length) { finished = true; setTimeout(() => onDone(errors === 0), 1000); }
+        } else {
+          errors++;
+          el.classList.add('bad');
+          setTimeout(() => el.classList.remove('bad'), 500);
+          idx = 0;
+          setTimeout(playTune, 1100); // hear it again and retry
+        }
+      };
+    });
+  }
+}
+
+const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano };
 
 // ---------- session runner ----------
 const PRAISE = ['Well done!', 'Amazing!', 'Super star!', 'Brilliant!', 'You did it!'];
@@ -1036,26 +1564,25 @@ function renderSummary() {
   const msg = stars === rounds ? 'Perfect! You are a superstar! 🌟'
     : stars >= rounds / 2 ? 'Great work! Keep it up! 💪'
     : 'Good try! Practice makes perfect! 🌱';
-  const chips = Object.entries(session.methods).map(([m, r]) => {
-    const mm = METHOD_META[m];
-    return `<span class="chip">${mm.icon} ${mm.name}: ${r.c}/${r.a}</span>`;
-  }).join('');
-  const best = bestMethod(session.skillId);
+  // Child-facing summary: stars + celebration + big friendly buttons only.
+  // (Method results live in the Parent Dashboard.)
   const skillId = session.skillId;
 
   app.innerHTML = `
     <div class="summary-card">
       <div class="summary-stars">${'⭐'.repeat(stars)}${'☆'.repeat(rounds - stars)}</div>
       <div class="summary-msg">${msg}</div>
-      <div class="method-chips">${chips}</div>
-      ${best ? `<p class="summary-msg" style="font-size:1.05rem;color:#777">You learn ${skill.name} best with ${METHOD_META[best].icon} <b>${METHOD_META[best].name}</b> — we'll show you more of that!</p>` : ''}
       <div class="btn-row">
-        <button class="btn" id="againBtn">🔁 Play Again</button>
-        <button class="btn secondary" id="homeBtn">🏠 Home</button>
+        <button class="btn again-big" id="againBtn" aria-label="Play again">
+          <span class="big-emoji">🔁</span><span class="btn-label">Play again</span>
+        </button>
+        <button class="btn secondary home-big" id="homeBtn" aria-label="Home">
+          <span class="big-emoji">🏠</span><span class="btn-label">Home</span>
+        </button>
       </div>
     </div>`;
-  confetti();
-  speak(msg);
+  if (stars === rounds) starRain(); else confetti();
+  speak(`${msg} Tap the big orange button to play again, or tap the house to try something else.`);
   document.getElementById('againBtn').onclick = () => startSession(skillId);
   document.getElementById('homeBtn').onclick = () => nav('home');
 }
@@ -1074,12 +1601,24 @@ function confetti() {
   }
 }
 
+// Perfect score (5/5): a sky full of glowing stars rains down over ~5 seconds
+function starRain() {
+  const emos = ['⭐', '🌟', '✨', '💫'];
+  for (let i = 0; i < 90; i++) {
+    const s = document.createElement('span');
+    s.className = 'confetti star';
+    s.textContent = pick(emos);
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.animationDelay = (Math.random() * 2.5) + 's';
+    s.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+    s.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 8000);
+  }
+}
+
 // ===== screens.js =====
 // Screens: profile picker, profile creation, home, parent dashboard.
-
-
-
-
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -1087,21 +1626,57 @@ function nav(where) {
   window.dispatchEvent(new CustomEvent('brightsteps:nav', { detail: where }));
 }
 
+// Re-colour the whole app to match a child's avatar (or the default purple).
+function applyTheme(theme) {
+  const t = theme || themeFor(activeProfile()?.avatar);
+  const root = document.documentElement.style;
+  root.setProperty('--theme', t.c);
+  root.setProperty('--theme-dark', t.dark);
+  root.setProperty('--theme-soft', t.soft);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', t.c);
+}
+
+let unsubscribeVoices = null;
+
+function refreshVoiceList() {
+  const vsel = document.getElementById('voiceSel');
+  if (!vsel) return; // dashboard not open any more
+  const current = state.settings.voiceName || '';
+  vsel.innerHTML = `<option value="">🎀 Soft female (automatic)</option>${voiceOptions()}`;
+  vsel.value = current;
+}
+
+function subscribeVoiceList() {
+  if (unsubscribeVoices) unsubscribeVoices();
+  unsubscribeVoices = onVoicesChanged(refreshVoiceList);
+}
+
+// Voices offered in the dashboard: just Daniel (British male) — the soft
+// female voice is the automatic default. Other voices stay hidden to keep
+// the choice simple.
+function voiceOptions() {
+  const daniel = getVoices().filter(v => /daniel/i.test(v.name));
+  return daniel.map(v =>
+    `<option value="${esc(v.name)}" ${state.settings.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('');
+}
+
 // ---------------- home ----------------
 function renderHome() {
   const prof = activeProfile();
   if (!prof) { renderProfiles(); return; }
+  applyTheme();
 
   const app = document.getElementById('app');
   app.innerHTML = `
     <h1 class="app-title">🌈 Bright Steps</h1>
-    <p class="tagline">Learn your way — the app notices what works and gives you more of it!</p>
+    <p class="tagline">Learn your way!</p>
     <p class="greeting">${prof.avatar} Hello, <b>${esc(prof.name || 'friend')}</b>!
-      <button class="switch-btn" id="switchBtn">👥 not you?</button>
+      <button class="switch-btn" id="switchBtn" title="Switch child">👋 Bye</button>
     </p>
     <button class="btn smart-btn" id="smartBtn">✨ Smart Session</button>
     <div class="skill-grid">
-      ${Object.values(SKILLS).map(sk => {
+      ${Object.values(SKILLS).filter(sk => isSkillVisible(prof, sk.id)).map(sk => {
         const lvl = getLevel(sk.id, sk.maxLevel);
         const acc = skillAccuracy(sk.id);
         return `
@@ -1113,19 +1688,21 @@ function renderHome() {
           </div>`;
       }).join('')}
     </div>
-    <p class="parent-link"><button class="btn secondary" id="parentBtn">👨‍👩‍👧 Parent Dashboard</button></p>`;
+    <p class="parent-link"><button class="parent-gate-link" id="parentBtn">🔒 Grown-ups</button></p>`;
 
   document.querySelectorAll('.skill-card').forEach(card => {
     card.onclick = () => startSession(card.dataset.id);
   });
   document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
-  document.getElementById('parentBtn').onclick = () => nav('dashboard');
+  document.getElementById('parentBtn').onclick = () => renderParentGate();
   document.getElementById('switchBtn').onclick = () => nav('profiles');
 }
 
 // Smart Session: prioritise the least-practised skill, then the lowest accuracy.
+// (Only skills the parent has left visible for this child are considered.)
 function pickSmartSkill() {
-  return Object.keys(SKILLS).sort((a, b) => {
+  const visible = Object.keys(SKILLS).filter(id => isSkillVisible(null, id));
+  return visible.sort((a, b) => {
     const aa = skillAnswered(a), ab = skillAnswered(b);
     if (aa !== ab) return aa - ab;
     return (skillAccuracy(a) ?? 0.5) - (skillAccuracy(b) ?? 0.5);
@@ -1134,6 +1711,7 @@ function pickSmartSkill() {
 
 // ---------------- profile picker ----------------
 function renderProfiles() {
+  applyTheme(DEFAULT_THEME); // neutral colour while nobody is picked
   const app = document.getElementById('app');
   const profiles = listProfiles();
 
@@ -1170,6 +1748,7 @@ function renderProfiles() {
 function renderProfileForm() {
   const app = document.getElementById('app');
   let selected = AVATARS[0];
+  applyTheme(themeFor(selected));
 
   app.innerHTML = `
     <div class="topbar"><button class="home-btn" id="backBtn">←</button>
@@ -1188,6 +1767,7 @@ function renderProfileForm() {
       selected = btn.dataset.a;
       document.querySelectorAll('#avatarRow .avatar-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+      applyTheme(themeFor(selected)); // live preview: app re-colours as they pick
     };
   });
   const saveProfile = () => {
@@ -1201,8 +1781,45 @@ function renderProfileForm() {
   document.getElementById('newName').focus();
 }
 
+// ---------------- parent gate ----------------
+// Young children tap anything big and colourful, so the dashboard sits behind
+// a plain grey link + a 3-second press-and-hold (plus a written instruction
+// pre-readers can't follow). Destructive actions keep their confirm() dialogs.
+function renderParentGate() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="topbar"><button class="home-btn" id="gateBack">←</button>
+      <div class="session-title">Grown-ups</div><span></span></div>
+    <div class="dash-card gate-card">
+      <div class="gate-lock">🔒</div>
+      <p class="gate-title">Grown-ups only</p>
+      <p class="gate-sub">Press and hold the button below for 3 seconds to open the Parent Dashboard.</p>
+      <button class="gate-hold" id="gateBtn"><span class="gate-fill"></span><span class="gate-label">🔒 Hold to open</span></button>
+    </div>`;
+
+  const btn = document.getElementById('gateBtn');
+  let timer = null;
+  const start = e => {
+    e.preventDefault();
+    if (timer) return;
+    btn.classList.add('holding');
+    timer = setTimeout(() => { timer = null; renderDashboard(); }, 3000);
+  };
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    btn.classList.remove('holding');
+  };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', cancel);
+  btn.addEventListener('pointerleave', cancel);
+  btn.addEventListener('pointercancel', cancel);
+  btn.addEventListener('contextmenu', e => e.preventDefault()); // no long-press menu on iOS
+  document.getElementById('gateBack').onclick = () => nav('home');
+}
+
 // ---------------- parent dashboard ----------------
 function renderDashboard() {
+  applyTheme(); // dashboard follows the current child's colour
   const app = document.getElementById('app');
   const prof = activeProfile();
 
@@ -1219,6 +1836,14 @@ function renderDashboard() {
           <button class="mini-btn" data-rename="${p.id}">Rename</button>
           <button class="mini-btn" data-avatar="${p.id}">Avatar</button>
           <button class="mini-btn" data-delete="${p.id}">🗑</button>
+        </span>
+        <span class="profile-sub" style="width:100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          Show on their home screen:
+          ${['spanish', 'french'].map(sid => `
+            <label class="skill-toggle">
+              <input type="checkbox" data-toggle="${sid}" data-pid="${p.id}" ${(p.hiddenSkills || []).includes(sid) ? '' : 'checked'}>
+              ${SKILLS[sid].icon} ${SKILLS[sid].name}
+            </label>`).join('')}
         </span>
       </div>`;
   }).join('');
@@ -1242,6 +1867,7 @@ function renderDashboard() {
       <div class="dash-card">
         <div class="dash-head">
           <span class="icon">${sk.icon}</span><span class="name">${sk.name}</span>
+          ${prof && !isSkillVisible(prof, sk.id) ? '<span class="chip">🙈 hidden from child</span>' : ''}
           <span class="level-pill">Level ${lvl}: ${sk.levelNames[lvl - 1]}</span>
         </div>
         <div class="bar-label" style="margin-bottom:8px">Overall accuracy: ${acc == null ? '—' : Math.round(acc * 100) + '%'}</div>
@@ -1270,6 +1896,15 @@ function renderDashboard() {
           </select>
         </label>
       </div>
+      <div class="settings-row">
+        <label>Reading voice:
+          <select id="voiceSel">
+            <option value="">🎀 Soft female (automatic)</option>
+            ${voiceOptions()}
+          </select>
+        </label>
+        <button class="mini-btn" id="testVoiceBtn">🔊 Test voice</button>
+      </div>
       <p class="dash-note">
         Showing stats for <b>${prof ? `${prof.avatar} ${esc(prof.name || 'Unnamed')}` : '—'}</b>.
         <b>How adaptivity works:</b> every answer is counted per child, per skill and per learning method.
@@ -1285,6 +1920,19 @@ function renderDashboard() {
   document.getElementById('homeBtn').onclick = () => nav('home');
   const sel = document.getElementById('overrideSel');
   sel.onchange = () => { state.settings.override = sel.value || null; save(); };
+  const vsel = document.getElementById('voiceSel');
+  vsel.onchange = () => {
+    state.settings.voiceName = vsel.value || null;
+    save();
+    setVoicePreference(vsel.value || null);
+  };
+  document.getElementById('testVoiceBtn').onclick = () =>
+    speak('Hello! Shall we read a story together?');
+
+  // Voices load asynchronously in most browsers — repopulate the dropdown
+  // as soon as they arrive (or after a short nudge if no event fires)
+  subscribeVoiceList();
+  if (!getVoices().length) setTimeout(refreshVoiceList, 600);
   document.getElementById('addProfileBtn').onclick = () => renderProfileForm();
 
   document.querySelectorAll('[data-switch]').forEach(b => {
@@ -1306,6 +1954,15 @@ function renderDashboard() {
       renderDashboard();
     };
   });
+  document.querySelectorAll('[data-toggle]').forEach(cb => {
+    cb.onchange = () => {
+      const p = state.profiles[cb.dataset.pid];
+      if (!p) return;
+      const set = new Set(p.hiddenSkills || []);
+      if (cb.checked) set.delete(cb.dataset.toggle); else set.add(cb.dataset.toggle);
+      updateProfile(p.id, { hiddenSkills: [...set] });
+    };
+  });
   document.querySelectorAll('[data-delete]').forEach(b => {
     b.onclick = () => {
       const p = state.profiles[b.dataset.delete];
@@ -1322,8 +1979,14 @@ function renderDashboard() {
 
 // ===== main.js =====
 // App entry point: routing + global speaker-button handling.
-
-
+// Apply the saved voice choice (parent dashboard) before anything speaks.
+// Only Daniel or the automatic soft female voice are offered now — clear any
+// older saved choice so the default takes over.
+if (state.settings.voiceName && !/daniel/i.test(state.settings.voiceName)) {
+  state.settings.voiceName = null;
+  save();
+}
+setVoicePreference(state.settings.voiceName ?? null);
 
 function route(where) {
   stopSpeak();
@@ -1336,11 +1999,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('brightsteps:nav', e => route(e.detail));
 }
 
-// Any 🔊 button with data-say speaks its text (event delegation survives re-renders)
+// Anything with a data-say attribute speaks its text when tapped —
+// 🔊 buttons AND the task prompt itself (so children can tap the
+// instruction to hear it again). Event delegation survives re-renders.
 if (typeof document !== 'undefined') {
   document.addEventListener('click', e => {
-    const s = e.target.closest('.speaker');
-    if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say));
+    const s = e.target.closest('[data-say]');
+    if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say), { lang: s.dataset.lang || undefined });
   });
   renderHome();
 }

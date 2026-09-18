@@ -12,6 +12,22 @@ export const METHOD_META = {
 
 export const AVATARS = ['🦊', '🐰', '🦁', '🐸', '🐼', '🦄', '🐯', '🐧', '🦉', '🐳'];
 
+// Each avatar re-themes the whole app: main colour, dark "3D base" shade, soft tint.
+export const DEFAULT_THEME = { c: '#5f27cd', dark: '#431b96', soft: '#f0e8ff' };
+export const AVATAR_THEMES = {
+  '🦊': { c: '#ff8c42', dark: '#d96a1e', soft: '#ffe8d6' }, // fox — orange
+  '🐰': { c: '#ff6b9d', dark: '#d94f80', soft: '#ffe0eb' }, // bunny — pink
+  '🦁': { c: '#f59f00', dark: '#c77e00', soft: '#ffedcc' }, // lion — golden
+  '🐸': { c: '#10ac84', dark: '#0b8566', soft: '#d4f3e9' }, // frog — green
+  '🐼': { c: '#576574', dark: '#3d4a5c', soft: '#e2e8f0' }, // panda — slate
+  '🦄': { c: '#845ef2', dark: '#6741d9', soft: '#e9e2fd' }, // unicorn — purple
+  '🐯': { c: '#f76707', dark: '#c94f00', soft: '#ffe3d1' }, // tiger — deep orange
+  '🐧': { c: '#2e86de', dark: '#1d68b3', soft: '#d9eafb' }, // penguin — blue
+  '🦉': { c: '#a1723f', dark: '#7d5730', soft: '#f1e4d4' }, // owl — brown
+  '🐳': { c: '#00b8d4', dark: '#0090a8', soft: '#d3f3fa' }, // whale — cyan
+};
+export function themeFor(avatar) { return AVATAR_THEMES[avatar] || DEFAULT_THEME; }
+
 const KEY = 'brightsteps.v2';
 const OLD_KEY = 'brightsteps.v1'; // single-profile data from v1 is migrated
 
@@ -24,7 +40,7 @@ const store = typeof localStorage !== 'undefined'
 function uid() { return 'p' + Math.random().toString(36).slice(2, 9); }
 
 function fresh() {
-  return { active: null, profiles: {}, settings: { override: null } };
+  return { active: null, profiles: {}, settings: { override: null, voiceName: null } };
 }
 
 function migrateV1(old) {
@@ -38,6 +54,7 @@ function migrateV1(old) {
         avatar: AVATARS[0],
         stats: old.stats || {},
         progress: old.progress || {},
+        hiddenSkills: [],
         createdAt: Date.now(),
       },
     },
@@ -77,6 +94,7 @@ export function addProfile(name, avatar) {
     avatar: avatar || AVATARS[0],
     stats: {},
     progress: {},
+    hiddenSkills: [],   // parent-controlled per-child module visibility
     createdAt: Date.now(),
   };
   state.active = id;
@@ -98,6 +116,13 @@ export function removeProfile(id) {
   delete state.profiles[id];
   if (state.active === id) state.active = listProfiles()[0]?.id || null;
   save();
+}
+
+// Is a skill shown on this child's home screen? (default: yes)
+export function isSkillVisible(profile, skillId) {
+  const p = profile || activeProfile();
+  if (!p) return true;
+  return !(p.hiddenSkills || []).includes(skillId);
 }
 
 // Overall accuracy across all skills for one profile (or the active one)

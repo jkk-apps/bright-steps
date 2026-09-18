@@ -4,9 +4,10 @@ import {
   state, save, resetAll,
   listProfiles, activeProfile, addProfile, switchProfile, updateProfile, removeProfile,
   overallAccuracy, getLevel, skillAccuracy, skillAnswered, methodRate, bestMethod,
-  METHODS, METHOD_META, AVATARS,
+  isSkillVisible, METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
 } from './engine.js';
 import { startSession } from './activities.js';
+import { speak, getVoices, setVoicePreference, onVoicesChanged } from './speech.js';
 
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,21 +16,57 @@ function nav(where) {
   window.dispatchEvent(new CustomEvent('brightsteps:nav', { detail: where }));
 }
 
+// Re-colour the whole app to match a child's avatar (or the default purple).
+function applyTheme(theme) {
+  const t = theme || themeFor(activeProfile()?.avatar);
+  const root = document.documentElement.style;
+  root.setProperty('--theme', t.c);
+  root.setProperty('--theme-dark', t.dark);
+  root.setProperty('--theme-soft', t.soft);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', t.c);
+}
+
+let unsubscribeVoices = null;
+
+function refreshVoiceList() {
+  const vsel = document.getElementById('voiceSel');
+  if (!vsel) return; // dashboard not open any more
+  const current = state.settings.voiceName || '';
+  vsel.innerHTML = `<option value="">🎀 Soft female (automatic)</option>${voiceOptions()}`;
+  vsel.value = current;
+}
+
+function subscribeVoiceList() {
+  if (unsubscribeVoices) unsubscribeVoices();
+  unsubscribeVoices = onVoicesChanged(refreshVoiceList);
+}
+
+// Voices offered in the dashboard: just Daniel (British male) — the soft
+// female voice is the automatic default. Other voices stay hidden to keep
+// the choice simple.
+function voiceOptions() {
+  const daniel = getVoices().filter(v => /daniel/i.test(v.name));
+  return daniel.map(v =>
+    `<option value="${esc(v.name)}" ${state.settings.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('');
+}
+
 // ---------------- home ----------------
 export function renderHome() {
   const prof = activeProfile();
   if (!prof) { renderProfiles(); return; }
+  applyTheme();
 
   const app = document.getElementById('app');
   app.innerHTML = `
     <h1 class="app-title">🌈 Bright Steps</h1>
-    <p class="tagline">Learn your way — the app notices what works and gives you more of it!</p>
+    <p class="tagline">Learn your way!</p>
     <p class="greeting">${prof.avatar} Hello, <b>${esc(prof.name || 'friend')}</b>!
-      <button class="switch-btn" id="switchBtn">👥 not you?</button>
+      <button class="switch-btn" id="switchBtn" title="Switch child">👋 Bye</button>
     </p>
     <button class="btn smart-btn" id="smartBtn">✨ Smart Session</button>
     <div class="skill-grid">
-      ${Object.values(SKILLS).map(sk => {
+      ${Object.values(SKILLS).filter(sk => isSkillVisible(prof, sk.id)).map(sk => {
         const lvl = getLevel(sk.id, sk.maxLevel);
         const acc = skillAccuracy(sk.id);
         return `
@@ -41,19 +78,21 @@ export function renderHome() {
           </div>`;
       }).join('')}
     </div>
-    <p class="parent-link"><button class="btn secondary" id="parentBtn">👨‍👩‍👧 Parent Dashboard</button></p>`;
+    <p class="parent-link"><button class="parent-gate-link" id="parentBtn">🔒 Grown-ups</button></p>`;
 
   document.querySelectorAll('.skill-card').forEach(card => {
     card.onclick = () => startSession(card.dataset.id);
   });
   document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
-  document.getElementById('parentBtn').onclick = () => nav('dashboard');
+  document.getElementById('parentBtn').onclick = () => renderParentGate();
   document.getElementById('switchBtn').onclick = () => nav('profiles');
 }
 
 // Smart Session: prioritise the least-practised skill, then the lowest accuracy.
+// (Only skills the parent has left visible for this child are considered.)
 function pickSmartSkill() {
-  return Object.keys(SKILLS).sort((a, b) => {
+  const visible = Object.keys(SKILLS).filter(id => isSkillVisible(null, id));
+  return visible.sort((a, b) => {
     const aa = skillAnswered(a), ab = skillAnswered(b);
     if (aa !== ab) return aa - ab;
     return (skillAccuracy(a) ?? 0.5) - (skillAccuracy(b) ?? 0.5);
@@ -62,6 +101,7 @@ function pickSmartSkill() {
 
 // ---------------- profile picker ----------------
 export function renderProfiles() {
+  applyTheme(DEFAULT_THEME); // neutral colour while nobody is picked
   const app = document.getElementById('app');
   const profiles = listProfiles();
 
@@ -98,6 +138,7 @@ export function renderProfiles() {
 function renderProfileForm() {
   const app = document.getElementById('app');
   let selected = AVATARS[0];
+  applyTheme(themeFor(selected));
 
   app.innerHTML = `
     <div class="topbar"><button class="home-btn" id="backBtn">←</button>
@@ -116,6 +157,7 @@ function renderProfileForm() {
       selected = btn.dataset.a;
       document.querySelectorAll('#avatarRow .avatar-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+      applyTheme(themeFor(selected)); // live preview: app re-colours as they pick
     };
   });
   const saveProfile = () => {
@@ -129,8 +171,45 @@ function renderProfileForm() {
   document.getElementById('newName').focus();
 }
 
+// ---------------- parent gate ----------------
+// Young children tap anything big and colourful, so the dashboard sits behind
+// a plain grey link + a 3-second press-and-hold (plus a written instruction
+// pre-readers can't follow). Destructive actions keep their confirm() dialogs.
+function renderParentGate() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="topbar"><button class="home-btn" id="gateBack">←</button>
+      <div class="session-title">Grown-ups</div><span></span></div>
+    <div class="dash-card gate-card">
+      <div class="gate-lock">🔒</div>
+      <p class="gate-title">Grown-ups only</p>
+      <p class="gate-sub">Press and hold the button below for 3 seconds to open the Parent Dashboard.</p>
+      <button class="gate-hold" id="gateBtn"><span class="gate-fill"></span><span class="gate-label">🔒 Hold to open</span></button>
+    </div>`;
+
+  const btn = document.getElementById('gateBtn');
+  let timer = null;
+  const start = e => {
+    e.preventDefault();
+    if (timer) return;
+    btn.classList.add('holding');
+    timer = setTimeout(() => { timer = null; renderDashboard(); }, 3000);
+  };
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    btn.classList.remove('holding');
+  };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', cancel);
+  btn.addEventListener('pointerleave', cancel);
+  btn.addEventListener('pointercancel', cancel);
+  btn.addEventListener('contextmenu', e => e.preventDefault()); // no long-press menu on iOS
+  document.getElementById('gateBack').onclick = () => nav('home');
+}
+
 // ---------------- parent dashboard ----------------
 export function renderDashboard() {
+  applyTheme(); // dashboard follows the current child's colour
   const app = document.getElementById('app');
   const prof = activeProfile();
 
@@ -147,6 +226,14 @@ export function renderDashboard() {
           <button class="mini-btn" data-rename="${p.id}">Rename</button>
           <button class="mini-btn" data-avatar="${p.id}">Avatar</button>
           <button class="mini-btn" data-delete="${p.id}">🗑</button>
+        </span>
+        <span class="profile-sub" style="width:100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          Show on their home screen:
+          ${['spanish', 'french'].map(sid => `
+            <label class="skill-toggle">
+              <input type="checkbox" data-toggle="${sid}" data-pid="${p.id}" ${(p.hiddenSkills || []).includes(sid) ? '' : 'checked'}>
+              ${SKILLS[sid].icon} ${SKILLS[sid].name}
+            </label>`).join('')}
         </span>
       </div>`;
   }).join('');
@@ -170,6 +257,7 @@ export function renderDashboard() {
       <div class="dash-card">
         <div class="dash-head">
           <span class="icon">${sk.icon}</span><span class="name">${sk.name}</span>
+          ${prof && !isSkillVisible(prof, sk.id) ? '<span class="chip">🙈 hidden from child</span>' : ''}
           <span class="level-pill">Level ${lvl}: ${sk.levelNames[lvl - 1]}</span>
         </div>
         <div class="bar-label" style="margin-bottom:8px">Overall accuracy: ${acc == null ? '—' : Math.round(acc * 100) + '%'}</div>
@@ -198,6 +286,15 @@ export function renderDashboard() {
           </select>
         </label>
       </div>
+      <div class="settings-row">
+        <label>Reading voice:
+          <select id="voiceSel">
+            <option value="">🎀 Soft female (automatic)</option>
+            ${voiceOptions()}
+          </select>
+        </label>
+        <button class="mini-btn" id="testVoiceBtn">🔊 Test voice</button>
+      </div>
       <p class="dash-note">
         Showing stats for <b>${prof ? `${prof.avatar} ${esc(prof.name || 'Unnamed')}` : '—'}</b>.
         <b>How adaptivity works:</b> every answer is counted per child, per skill and per learning method.
@@ -213,6 +310,19 @@ export function renderDashboard() {
   document.getElementById('homeBtn').onclick = () => nav('home');
   const sel = document.getElementById('overrideSel');
   sel.onchange = () => { state.settings.override = sel.value || null; save(); };
+  const vsel = document.getElementById('voiceSel');
+  vsel.onchange = () => {
+    state.settings.voiceName = vsel.value || null;
+    save();
+    setVoicePreference(vsel.value || null);
+  };
+  document.getElementById('testVoiceBtn').onclick = () =>
+    speak('Hello! Shall we read a story together?');
+
+  // Voices load asynchronously in most browsers — repopulate the dropdown
+  // as soon as they arrive (or after a short nudge if no event fires)
+  subscribeVoiceList();
+  if (!getVoices().length) setTimeout(refreshVoiceList, 600);
   document.getElementById('addProfileBtn').onclick = () => renderProfileForm();
 
   document.querySelectorAll('[data-switch]').forEach(b => {
@@ -232,6 +342,15 @@ export function renderDashboard() {
       const next = AVATARS[(AVATARS.indexOf(p.avatar) + 1) % AVATARS.length];
       updateProfile(p.id, { avatar: next });
       renderDashboard();
+    };
+  });
+  document.querySelectorAll('[data-toggle]').forEach(cb => {
+    cb.onchange = () => {
+      const p = state.profiles[cb.dataset.pid];
+      if (!p) return;
+      const set = new Set(p.hiddenSkills || []);
+      if (cb.checked) set.delete(cb.dataset.toggle); else set.add(cb.dataset.toggle);
+      updateProfile(p.id, { hiddenSkills: [...set] });
     };
   });
   document.querySelectorAll('[data-delete]').forEach(b => {

@@ -39,6 +39,9 @@ standalone display, offline caching via `sw.js`):
 | 📖 SATPIN words | satpin-only CVC → Phase 2 CVC → Phase 3 digraphs → Phase 4 blends | Phonics Phases 2–4 |
 | 🎨 Colours | 4 → 8 → 11 colours → reading colour words | EYFS |
 | 📚 Reading | Lilac (wordless) → Pink → Red → Yellow → Blue → Green | UK book bands |
+| 🎹 Piano | C-D-E → C-G → one octave → two octaves (playable keyboard, ear training, copy-the-tune) | early music |
+| 🇪🇸 Spanish | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
+| 🇫🇷 French | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 
 ## How the adaptivity works
 
@@ -61,13 +64,18 @@ The engine (`js/engine.js`):
 ## Multiple children
 
 Each child gets their own **profile** (avatar + name) with fully separate stats, levels and
-learned method preferences. On first launch the app asks who is learning; tap "👥 not you?"
-on the home screen to switch. Profiles can be added, renamed, re-avatared, switched and
+learned method preferences. **The whole app re-colours itself to match the chosen avatar**
+(🦊 orange, 🐰 pink, 🐸 green, 🐧 blue…) — buttons, titles, highlights and even the
+installed app's title-bar colour — and you see a live preview while picking the avatar.
+On first launch the app asks who is learning; tap "👋 Bye" on the home screen to switch. Profiles can be added, renamed, re-avatared, switched and
 deleted from the Parent Dashboard. Data from the original single-profile version is
 migrated automatically on first run.
 
 The **Parent Dashboard** (bottom of the home screen) shows per-method success rates, current
 levels, the child's "preferred" method per skill, an optional method override, and a reset button.
+It sits behind a **parent gate**: a deliberately plain grey "🔒 Grown-ups" link (kids are drawn to
+big colourful buttons, not grey text) followed by a 3-second press-and-hold screen. Destructive
+actions (delete profile, reset all) also ask for confirmation.
 
 ## Project structure
 
@@ -89,4 +97,6 @@ bright-steps.html single-file build (open this to play)
 - Backend sync (accounts, cross-device progress)
 - Response-time tracking per method
 - More book bands (Orange → White) and trickier-word teaching
+- Piano: black keys / sharps & flats level, famous nursery tunes to copy
+- Languages: phrase-of-the-day, more themes (family, clothes, days)
 - Recordable adult voice instead of TTS
