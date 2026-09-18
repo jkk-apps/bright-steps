@@ -175,19 +175,22 @@ export function methodRate(skill, method) {
 
 // Weighted choice: (success rate)^2 + exploration floor. Unseen methods get a neutral 0.5
 // so the app tries everything early, then converges on what works for this child.
-export function pickMethod(skill) {
-  if (state.settings.override) return state.settings.override;
-  const weights = METHODS.map(m => {
+// `allowed` optionally restricts the pool (e.g. language levels gate harder methods).
+// A parent override outside the allowed pool is ignored.
+export function pickMethod(skill, allowed = METHODS) {
+  const pool = METHODS.filter(m => allowed.includes(m));
+  if (state.settings.override && pool.includes(state.settings.override)) return state.settings.override;
+  const weights = pool.map(m => {
     const r = methodRate(skill, m);
     return r == null ? 0.5 : r * r + 0.12;
   });
   const total = weights.reduce((a, b) => a + b, 0);
   let roll = Math.random() * total;
-  for (let i = 0; i < METHODS.length; i++) {
+  for (let i = 0; i < pool.length; i++) {
     roll -= weights[i];
-    if (roll <= 0) return METHODS[i];
+    if (roll <= 0) return pool[i];
   }
-  return METHODS[METHODS.length - 1];
+  return pool[pool.length - 1];
 }
 
 export function bestMethod(skill) {

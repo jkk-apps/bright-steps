@@ -70,6 +70,18 @@ export const PIANO_LEVEL_NOTES = {
 };
 
 // ---------------- languages ----------------
+// Language skills unlock harder learning methods as the child levels up —
+// listen & look first (Reception-style), matching later, spelling last.
+// A 4-year-old beginner never sees reading/spelling tasks.
+export const LANG_METHOD_GATES = {
+  1: ['hear', 'look'],
+  2: ['hear', 'look'],
+  3: ['hear', 'look', 'match'],
+  4: ['hear', 'look', 'match'],
+  5: ['hear', 'look', 'match', 'play'],
+  6: ['hear', 'look', 'match', 'play'],
+};
+
 // Item shape: { w: word, en: English meaning, emoji?, num?, colour? }
 export const LANG_CONTENT = {
   spanish: {

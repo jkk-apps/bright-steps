@@ -360,19 +360,22 @@ function methodRate(skill, method) {
 
 // Weighted choice: (success rate)^2 + exploration floor. Unseen methods get a neutral 0.5
 // so the app tries everything early, then converges on what works for this child.
-function pickMethod(skill) {
-  if (state.settings.override) return state.settings.override;
-  const weights = METHODS.map(m => {
+// `allowed` optionally restricts the pool (e.g. language levels gate harder methods).
+// A parent override outside the allowed pool is ignored.
+function pickMethod(skill, allowed = METHODS) {
+  const pool = METHODS.filter(m => allowed.includes(m));
+  if (state.settings.override && pool.includes(state.settings.override)) return state.settings.override;
+  const weights = pool.map(m => {
     const r = methodRate(skill, m);
     return r == null ? 0.5 : r * r + 0.12;
   });
   const total = weights.reduce((a, b) => a + b, 0);
   let roll = Math.random() * total;
-  for (let i = 0; i < METHODS.length; i++) {
+  for (let i = 0; i < pool.length; i++) {
     roll -= weights[i];
-    if (roll <= 0) return METHODS[i];
+    if (roll <= 0) return pool[i];
   }
-  return METHODS[METHODS.length - 1];
+  return pool[pool.length - 1];
 }
 
 function bestMethod(skill) {
@@ -468,6 +471,18 @@ const PIANO_LEVEL_NOTES = {
 };
 
 // ---------------- languages ----------------
+// Language skills unlock harder learning methods as the child levels up —
+// listen & look first (Reception-style), matching later, spelling last.
+// A 4-year-old beginner never sees reading/spelling tasks.
+const LANG_METHOD_GATES = {
+  1: ['hear', 'look'],
+  2: ['hear', 'look'],
+  3: ['hear', 'look', 'match'],
+  4: ['hear', 'look', 'match'],
+  5: ['hear', 'look', 'match', 'play'],
+  6: ['hear', 'look', 'match', 'play'],
+};
+
 // Item shape: { w: word, en: English meaning, emoji?, num?, colour? }
 const LANG_CONTENT = {
   spanish: {
@@ -1125,18 +1140,23 @@ function genLanguage(level, method, content) {
 
   if (method === 'look') {
     // picture/count/colour shown; choose the matching word (options can be heard first)
-    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+    // level 1: just 2 choices so brand-new learners build confidence
+    const options = shuffle([target, ...sample(others, level === 1 ? 1 : 2)]).map(it => ({
       html: `<span class="opt-word">${it.w}</span>${spkMini(it.w, L)}`,
       value: it.w, cls: 'word-option',
     }));
+    // number items show a row of things to count, so ask for counting instead
+    const isNum = target.num != null;
     return {
       type: 'choice',
-      prompt: { html: bigVisual(target), text: 'Tap the word that matches!', speak: 'Tap the word that matches the picture.' },
+      prompt: isNum
+        ? { html: bigVisual(target), text: 'Count and tell me the number!', speak: 'Count the pictures, and tell me the number!' }
+        : { html: bigVisual(target), text: 'Tap the word that matches!', speak: 'Tap the word that matches the picture.' },
       options, answer: target.w,
     };
   }
   if (method === 'hear') {
-    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+    const options = shuffle([target, ...sample(others, level === 1 ? 1 : 2)]).map(it => ({
       html: visual(it), value: it.w, cls: it.colour ? 'swatch-option' : '',
     }));
     return {
@@ -1144,7 +1164,8 @@ function genLanguage(level, method, content) {
       prompt: {
         html: '<div class="big-letter">👂</div>', text: 'Listen, then tap!',
         speak: target.w, lang: L,
-        speakSeq: [{ text: 'Listen, then tap what you hear!' }, { text: target.w, lang: L }],
+        // little ears need repetition: instruction, then the word twice
+        speakSeq: [{ text: 'Listen, then tap what you hear!' }, { text: target.w, lang: L }, { text: target.w, lang: L }],
       },
       options, answer: target.w,
     };
@@ -1160,8 +1181,10 @@ function genLanguage(level, method, content) {
       })),
     };
   }
-  // play → build the word from letter tiles (single words only)
-  const buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'"));
+  // play → build the word from letter tiles (short single words only —
+  // long spellings like "caballo" are too hard for emergent writers)
+  let buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'") && i.w.length <= 5);
+  if (!buildPool.length) buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'"));
   const t = buildPool.includes(target) ? target : pick(buildPool);
   return {
     type: 'build',
@@ -1513,8 +1536,10 @@ function startSession(skillId, rounds = 5) {
 function renderRound() {
   const app = document.getElementById('app');
   const skill = SKILLS[session.skillId];
-  const method = pickMethod(session.skillId);
   const level = getLevel(session.skillId, skill.maxLevel);
+  // language skills unlock harder methods as the child levels up
+  const gates = (session.skillId === 'spanish' || session.skillId === 'french') ? LANG_METHOD_GATES[level] : undefined;
+  const method = pickMethod(session.skillId, gates);
   const q = generateRound(session.skillId, level, method);
   session.current = { method, level };
   const mm = METHOD_META[method];

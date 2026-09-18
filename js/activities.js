@@ -12,7 +12,7 @@
 import {
   SKILLS, NUM_EMOJI, LETTER_LEVELS, LETTER_EMOJI, WORD_LEVELS, WORD_EMOJI,
   COLOURS, COLOUR_LEVELS, READING_BANDS, EMOJI_POOL,
-  NOTE_COLOURS, NOTE_TEXT, PIANO_OCTAVES, PIANO_LEVEL_NOTES, LANG_CONTENT,
+  NOTE_COLOURS, NOTE_TEXT, PIANO_OCTAVES, PIANO_LEVEL_NOTES, LANG_CONTENT, LANG_METHOD_GATES,
 } from './data.js';
 import { METHOD_META, recordResult, pickMethod, getLevel, activeProfile } from './engine.js';
 import { speak, speakSeq, stopSpeak, speechAvailable } from './speech.js';
@@ -439,18 +439,23 @@ function genLanguage(level, method, content) {
 
   if (method === 'look') {
     // picture/count/colour shown; choose the matching word (options can be heard first)
-    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+    // level 1: just 2 choices so brand-new learners build confidence
+    const options = shuffle([target, ...sample(others, level === 1 ? 1 : 2)]).map(it => ({
       html: `<span class="opt-word">${it.w}</span>${spkMini(it.w, L)}`,
       value: it.w, cls: 'word-option',
     }));
+    // number items show a row of things to count, so ask for counting instead
+    const isNum = target.num != null;
     return {
       type: 'choice',
-      prompt: { html: bigVisual(target), text: 'Tap the word that matches!', speak: 'Tap the word that matches the picture.' },
+      prompt: isNum
+        ? { html: bigVisual(target), text: 'Count and tell me the number!', speak: 'Count the pictures, and tell me the number!' }
+        : { html: bigVisual(target), text: 'Tap the word that matches!', speak: 'Tap the word that matches the picture.' },
       options, answer: target.w,
     };
   }
   if (method === 'hear') {
-    const options = shuffle([target, ...sample(others, 2)]).map(it => ({
+    const options = shuffle([target, ...sample(others, level === 1 ? 1 : 2)]).map(it => ({
       html: visual(it), value: it.w, cls: it.colour ? 'swatch-option' : '',
     }));
     return {
@@ -458,7 +463,8 @@ function genLanguage(level, method, content) {
       prompt: {
         html: '<div class="big-letter">👂</div>', text: 'Listen, then tap!',
         speak: target.w, lang: L,
-        speakSeq: [{ text: 'Listen, then tap what you hear!' }, { text: target.w, lang: L }],
+        // little ears need repetition: instruction, then the word twice
+        speakSeq: [{ text: 'Listen, then tap what you hear!' }, { text: target.w, lang: L }, { text: target.w, lang: L }],
       },
       options, answer: target.w,
     };
@@ -474,8 +480,10 @@ function genLanguage(level, method, content) {
       })),
     };
   }
-  // play → build the word from letter tiles (single words only)
-  const buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'"));
+  // play → build the word from letter tiles (short single words only —
+  // long spellings like "caballo" are too hard for emergent writers)
+  let buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'") && i.w.length <= 5);
+  if (!buildPool.length) buildPool = items.filter(i => !i.w.includes(' ') && !i.w.includes("'"));
   const t = buildPool.includes(target) ? target : pick(buildPool);
   return {
     type: 'build',
@@ -827,8 +835,10 @@ export function startSession(skillId, rounds = 5) {
 function renderRound() {
   const app = document.getElementById('app');
   const skill = SKILLS[session.skillId];
-  const method = pickMethod(session.skillId);
   const level = getLevel(session.skillId, skill.maxLevel);
+  // language skills unlock harder methods as the child levels up
+  const gates = (session.skillId === 'spanish' || session.skillId === 'french') ? LANG_METHOD_GATES[level] : undefined;
+  const method = pickMethod(session.skillId, gates);
   const q = generateRound(session.skillId, level, method);
   session.current = { method, level };
   const mm = METHOD_META[method];

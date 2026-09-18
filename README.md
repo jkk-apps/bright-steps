@@ -43,6 +43,11 @@ standalone display, offline caching via `sw.js`):
 | 🇪🇸 Spanish | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 | 🇫🇷 French | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 
+**Language skills are gentler for young beginners** (Reception-style: listen first, read later,
+spell last): levels 1–2 use only 👂 Listen and 👀 Look (with tappable 🔊 on every word and just
+2 choices at level 1), 🧩 Match unlocks at level 3, and 🎈 spelling unlocks at level 5 — limited
+to short words (≤5 letters). Listening rounds say the word twice.
+
 ## How the adaptivity works
 
 Every question is tagged with a **learning method**:
