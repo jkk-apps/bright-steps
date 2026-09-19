@@ -6,8 +6,8 @@ import {
   overallAccuracy, getLevel, skillAccuracy, skillAnswered, methodRate, bestMethod,
   isSkillVisible, METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
 } from './engine.js';
-import { startSession } from './activities.js';
-import { speak, getVoices, setVoicePreference, onVoicesChanged } from './speech.js';
+import { startSession, renderPianoFreePlay } from './activities.js';
+import { speak, getVoices, setVoicePreference, onVoicesChanged, isHighQuality } from './speech.js';
 
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,13 +42,17 @@ function subscribeVoiceList() {
   unsubscribeVoices = onVoicesChanged(refreshVoiceList);
 }
 
-// Voices offered in the dashboard: just Daniel (British male) — the soft
-// female voice is the automatic default. Other voices stay hidden to keep
-// the choice simple.
+// Voices offered in the dashboard: the automatic soft female (which now prefers
+// downloaded Enhanced/Premium voices), any enhanced/premium voices found on this
+// device, and Daniel (British male). Basic voices stay hidden to keep it simple.
 function voiceOptions() {
-  const daniel = getVoices().filter(v => /daniel/i.test(v.name));
-  return daniel.map(v =>
-    `<option value="${esc(v.name)}" ${state.settings.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('');
+  const vs = getVoices();
+  const fancy = vs.filter(v => isHighQuality(v) && /^en/i.test(v.lang || ''));
+  const daniel = vs.filter(v => /daniel/i.test(v.name));
+  const seen = new Set();
+  return [...fancy, ...daniel]
+    .filter(v => !seen.has(v.name) && seen.add(v.name))
+    .map(v => `<option value="${esc(v.name)}" ${state.settings.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('');
 }
 
 // ---------------- home ----------------
@@ -78,12 +82,14 @@ export function renderHome() {
           </div>`;
       }).join('')}
     </div>
+    <p class="free-piano-row"><button class="btn secondary" id="freePianoBtn">🎹 Just play the piano</button></p>
     <p class="parent-link"><button class="parent-gate-link" id="parentBtn">🔒 Grown-ups</button></p>`;
 
   document.querySelectorAll('.skill-card').forEach(card => {
     card.onclick = () => startSession(card.dataset.id);
   });
   document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
+  document.getElementById('freePianoBtn').onclick = () => renderPianoFreePlay();
   document.getElementById('parentBtn').onclick = () => renderParentGate();
   document.getElementById('switchBtn').onclick = () => nav('profiles');
 }
@@ -295,6 +301,11 @@ export function renderDashboard() {
         </label>
         <button class="mini-btn" id="testVoiceBtn">🔊 Test voice</button>
       </div>
+      <p class="dash-note">🎙 <b>Want a more human voice?</b> Download an <i>Enhanced</i> voice
+        on this device (iPhone/iPad: Settings → Accessibility → <i>Read &amp; Speak</i> — called
+        <i>Spoken Content</i> on older iOS — → Voices → English; Mac: System Settings →
+        Accessibility → Spoken Content → System Voice → Manage Voices).
+        It appears in this list afterwards and is used automatically.</p>
       <p class="dash-note">
         Showing stats for <b>${prof ? `${prof.avatar} ${esc(prof.name || 'Unnamed')}` : '—'}</b>.
         <b>How adaptivity works:</b> every answer is counted per child, per skill and per learning method.

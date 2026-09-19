@@ -4,9 +4,9 @@ import { speak, stopSpeak, setVoicePreference } from './speech.js';
 import { state, save } from './engine.js';
 
 // Apply the saved voice choice (parent dashboard) before anything speaks.
-// Only Daniel or the automatic soft female voice are offered now — clear any
-// older saved choice so the default takes over.
-if (state.settings.voiceName && !/daniel/i.test(state.settings.voiceName)) {
+// The picker only offers Daniel, downloaded Enhanced/Premium voices, or the
+// automatic soft female — clear any older saved choice so the default takes over.
+if (state.settings.voiceName && !/daniel|\(enhanced\)|\(premium\)/i.test(state.settings.voiceName)) {
   state.settings.voiceName = null;
   save();
 }
@@ -31,5 +31,13 @@ if (typeof document !== 'undefined') {
     const s = e.target.closest('[data-say]');
     if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say), { lang: s.dataset.lang || undefined });
   });
+
+  // Stop accidental zooming from little fingers: pinch (iOS gesture events)
+  // and double-tap. (body already has touch-action: manipulation; the viewport
+  // meta locks scale when launched from the home-screen icon.)
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('gesturechange', e => e.preventDefault());
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
   renderHome();
 }

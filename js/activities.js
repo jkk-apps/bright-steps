@@ -818,6 +818,36 @@ function renderPiano(host, q, onDone) {
   }
 }
 
+// ---------- free-play piano ----------
+// Open piano for exploration: Boomwhacker colours + letter labels always on,
+// no testing, no scoring — just making music and getting familiar with the keys.
+export function renderPianoFreePlay() {
+  const app = document.getElementById('app');
+  const keys = Object.keys(NOTE_COLOURS).map(n => ({ n, freq: PIANO_OCTAVES[0][n], colour: NOTE_COLOURS[n] }));
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="home-btn" id="homeBtn">🏠</button>
+      <div class="session-title">🎹 Just play!</div>
+      <span></span>
+    </div>
+    <div class="prompt"><div class="prompt-text">Tap the keys and make some music!</div></div>
+    <div class="piano free">
+      ${keys.map((k, i) => `<div class="piano-key" data-i="${i}" style="background:${k.colour};color:${NOTE_TEXT[k.n]}">${k.n}</div>`).join('')}
+    </div>`;
+
+  // pure music-making: no voice-over on key presses, just the note itself
+  app.querySelectorAll('.piano-key').forEach(el => {
+    el.onclick = () => {
+      const k = keys[+el.dataset.i];
+      playNote(k.freq);
+      el.classList.add('hit');
+      setTimeout(() => el.classList.remove('hit'), 300);
+    };
+  });
+  document.getElementById('homeBtn').onclick = () => nav('home');
+  speak('Tap the keys and make some music!');
+}
+
 const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano };
 
 // ---------- session runner ----------

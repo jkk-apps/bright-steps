@@ -16,6 +16,10 @@ const FEMALE_PREFERENCES = [
 
 const isGB = v => /en[-_]GB/i.test(v.lang);
 
+// Downloaded "(Enhanced)"/"(Premium)" Apple voices sound far more human than the
+// built-in compact ones — always prefer them when present on this device.
+export const isHighQuality = v => /\(enhanced\)|\(premium\)/i.test(v.name || '');
+
 function findByHints(voices) {
   for (const hint of FEMALE_PREFERENCES) {
     const v = voices.find(x => x.name.toLowerCase().includes(hint));
@@ -41,9 +45,12 @@ function pickVoice() {
     const chosen = vs.find(v => v.name === preferredVoiceName);
     if (chosen) { voice = chosen; return; }
   }
-  // 2) British female first, then any soft female, then any British, then any English
+  // 2) soft female in the best available quality (enhanced/premium first),
+  //    British first, then any soft female, then any British, then any English
   const gb = vs.filter(isGB);
-  voice = findByHints(gb)
+  voice = findByHints(gb.filter(isHighQuality))
+       || findByHints(vs.filter(isHighQuality))
+       || findByHints(gb)
        || gb.find(v => /female|grandma|shelley|sandy|flo/i.test(v.name))
        || findByHints(vs)
        || vs.find(v => /female/i.test(v.name))
@@ -96,7 +103,7 @@ function stripEmoji(text) {
 function voiceForLang(lang) {
   const prefix = String(lang).split('-')[0].toLowerCase();
   const vs = getVoices().filter(v => (v.lang || '').toLowerCase().startsWith(prefix));
-  return findByHints(vs) || vs.find(v => /female/i.test(v.name)) || vs[0] || null;
+  return findByHints(vs.filter(isHighQuality)) || findByHints(vs) || vs.find(v => /female/i.test(v.name)) || vs[0] || null;
 }
 
 export function speak(text, opts = {}) {

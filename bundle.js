@@ -17,6 +17,10 @@ const FEMALE_PREFERENCES = [
 
 const isGB = v => /en[-_]GB/i.test(v.lang);
 
+// Downloaded "(Enhanced)"/"(Premium)" Apple voices sound far more human than the
+// built-in compact ones — always prefer them when present on this device.
+const isHighQuality = v => /\(enhanced\)|\(premium\)/i.test(v.name || '');
+
 function findByHints(voices) {
   for (const hint of FEMALE_PREFERENCES) {
     const v = voices.find(x => x.name.toLowerCase().includes(hint));
@@ -42,9 +46,12 @@ function pickVoice() {
     const chosen = vs.find(v => v.name === preferredVoiceName);
     if (chosen) { voice = chosen; return; }
   }
-  // 2) British female first, then any soft female, then any British, then any English
+  // 2) soft female in the best available quality (enhanced/premium first),
+  //    British first, then any soft female, then any British, then any English
   const gb = vs.filter(isGB);
-  voice = findByHints(gb)
+  voice = findByHints(gb.filter(isHighQuality))
+       || findByHints(vs.filter(isHighQuality))
+       || findByHints(gb)
        || gb.find(v => /female|grandma|shelley|sandy|flo/i.test(v.name))
        || findByHints(vs)
        || vs.find(v => /female/i.test(v.name))
@@ -97,7 +104,7 @@ function stripEmoji(text) {
 function voiceForLang(lang) {
   const prefix = String(lang).split('-')[0].toLowerCase();
   const vs = getVoices().filter(v => (v.lang || '').toLowerCase().startsWith(prefix));
-  return findByHints(vs) || vs.find(v => /female/i.test(v.name)) || vs[0] || null;
+  return findByHints(vs.filter(isHighQuality)) || findByHints(vs) || vs.find(v => /female/i.test(v.name)) || vs[0] || null;
 }
 
 function speak(text, opts = {}) {
@@ -1519,6 +1526,36 @@ function renderPiano(host, q, onDone) {
   }
 }
 
+// ---------- free-play piano ----------
+// Open piano for exploration: Boomwhacker colours + letter labels always on,
+// no testing, no scoring — just making music and getting familiar with the keys.
+function renderPianoFreePlay() {
+  const app = document.getElementById('app');
+  const keys = Object.keys(NOTE_COLOURS).map(n => ({ n, freq: PIANO_OCTAVES[0][n], colour: NOTE_COLOURS[n] }));
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="home-btn" id="homeBtn">🏠</button>
+      <div class="session-title">🎹 Just play!</div>
+      <span></span>
+    </div>
+    <div class="prompt"><div class="prompt-text">Tap the keys and make some music!</div></div>
+    <div class="piano free">
+      ${keys.map((k, i) => `<div class="piano-key" data-i="${i}" style="background:${k.colour};color:${NOTE_TEXT[k.n]}">${k.n}</div>`).join('')}
+    </div>`;
+
+  // pure music-making: no voice-over on key presses, just the note itself
+  app.querySelectorAll('.piano-key').forEach(el => {
+    el.onclick = () => {
+      const k = keys[+el.dataset.i];
+      playNote(k.freq);
+      el.classList.add('hit');
+      setTimeout(() => el.classList.remove('hit'), 300);
+    };
+  });
+  document.getElementById('homeBtn').onclick = () => nav('home');
+  speak('Tap the keys and make some music!');
+}
+
 const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano };
 
 // ---------- session runner ----------
@@ -1677,13 +1714,17 @@ function subscribeVoiceList() {
   unsubscribeVoices = onVoicesChanged(refreshVoiceList);
 }
 
-// Voices offered in the dashboard: just Daniel (British male) — the soft
-// female voice is the automatic default. Other voices stay hidden to keep
-// the choice simple.
+// Voices offered in the dashboard: the automatic soft female (which now prefers
+// downloaded Enhanced/Premium voices), any enhanced/premium voices found on this
+// device, and Daniel (British male). Basic voices stay hidden to keep it simple.
 function voiceOptions() {
-  const daniel = getVoices().filter(v => /daniel/i.test(v.name));
-  return daniel.map(v =>
-    `<option value="${esc(v.name)}" ${state.settings.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('');
+  const vs = getVoices();
+  const fancy = vs.filter(v => isHighQuality(v) && /^en/i.test(v.lang || ''));
+  const daniel = vs.filter(v => /daniel/i.test(v.name));
+  const seen = new Set();
+  return [...fancy, ...daniel]
+    .filter(v => !seen.has(v.name) && seen.add(v.name))
+    .map(v => `<option value="${esc(v.name)}" ${state.settings.voiceName === v.name ? 'selected' : ''}>${esc(v.name)} (${v.lang})</option>`).join('');
 }
 
 // ---------------- home ----------------
@@ -1713,12 +1754,14 @@ function renderHome() {
           </div>`;
       }).join('')}
     </div>
+    <p class="free-piano-row"><button class="btn secondary" id="freePianoBtn">🎹 Just play the piano</button></p>
     <p class="parent-link"><button class="parent-gate-link" id="parentBtn">🔒 Grown-ups</button></p>`;
 
   document.querySelectorAll('.skill-card').forEach(card => {
     card.onclick = () => startSession(card.dataset.id);
   });
   document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
+  document.getElementById('freePianoBtn').onclick = () => renderPianoFreePlay();
   document.getElementById('parentBtn').onclick = () => renderParentGate();
   document.getElementById('switchBtn').onclick = () => nav('profiles');
 }
@@ -1930,6 +1973,11 @@ function renderDashboard() {
         </label>
         <button class="mini-btn" id="testVoiceBtn">🔊 Test voice</button>
       </div>
+      <p class="dash-note">🎙 <b>Want a more human voice?</b> Download an <i>Enhanced</i> voice
+        on this device (iPhone/iPad: Settings → Accessibility → <i>Read &amp; Speak</i> — called
+        <i>Spoken Content</i> on older iOS — → Voices → English; Mac: System Settings →
+        Accessibility → Spoken Content → System Voice → Manage Voices).
+        It appears in this list afterwards and is used automatically.</p>
       <p class="dash-note">
         Showing stats for <b>${prof ? `${prof.avatar} ${esc(prof.name || 'Unnamed')}` : '—'}</b>.
         <b>How adaptivity works:</b> every answer is counted per child, per skill and per learning method.
@@ -2005,9 +2053,9 @@ function renderDashboard() {
 // ===== main.js =====
 // App entry point: routing + global speaker-button handling.
 // Apply the saved voice choice (parent dashboard) before anything speaks.
-// Only Daniel or the automatic soft female voice are offered now — clear any
-// older saved choice so the default takes over.
-if (state.settings.voiceName && !/daniel/i.test(state.settings.voiceName)) {
+// The picker only offers Daniel, downloaded Enhanced/Premium voices, or the
+// automatic soft female — clear any older saved choice so the default takes over.
+if (state.settings.voiceName && !/daniel|\(enhanced\)|\(premium\)/i.test(state.settings.voiceName)) {
   state.settings.voiceName = null;
   save();
 }
@@ -2032,5 +2080,13 @@ if (typeof document !== 'undefined') {
     const s = e.target.closest('[data-say]');
     if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say), { lang: s.dataset.lang || undefined });
   });
+
+  // Stop accidental zooming from little fingers: pinch (iOS gesture events)
+  // and double-tap. (body already has touch-action: manipulation; the viewport
+  // meta locks scale when launched from the home-screen icon.)
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('gesturechange', e => e.preventDefault());
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
   renderHome();
 }

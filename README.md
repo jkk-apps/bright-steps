@@ -43,6 +43,10 @@ standalone display, offline caching via `sw.js`):
 | 🇪🇸 Spanish | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 | 🇫🇷 French | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 
+The piano also has a **free-play mode** (“🎹 Just play the piano” on the home screen): an open
+keyboard with the Boomwhacker colours and letter labels always on, no testing or scoring — each
+tap simply plays the note. Perfect for getting familiar with the keys before the game tests them.
+
 **Language skills are gentler for young beginners** (Reception-style: listen first, read later,
 spell last): levels 1–2 use only 👂 Listen and 👀 Look (with tappable 🔊 on every word and just
 2 choices at level 1), 🧩 Match unlocks at level 3, and 🎈 spelling unlocks at level 5 — limited
