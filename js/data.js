@@ -29,6 +29,26 @@ export const SKILLS = {
     id: 'shapes', name: 'Shapes', icon: '🔷', colour: '#e17055', maxLevel: 2,
     levelNames: ['first shapes', 'more shapes'],
   },
+  tricky: {
+    id: 'tricky', name: 'Tricky Words', icon: '📕', colour: '#b71540', maxLevel: 4,
+    levelNames: ['phase 2 red words', 'phase 3 red words', 'phase 4 red words', 'phase 5 red words'],
+  },
+  tracing: {
+    id: 'tracing', name: 'Tracing', icon: '✍️', colour: '#596275', maxLevel: 2,
+    levelNames: ['letters', 'numbers'],
+  },
+  money: {
+    id: 'money', name: 'Money', icon: '🪙', colour: '#b7791f', maxLevel: 3,
+    levelNames: ['coins to 10p', 'all coins', 'adding coins'],
+  },
+  time: {
+    id: 'time', name: 'Time', icon: '🕐', colour: '#30336b', maxLevel: 3,
+    levelNames: ["o'clock", 'half past', 'quarter hours'],
+  },
+  calendar: {
+    id: 'calendar', name: 'Days & Months', icon: '📅', colour: '#38ada9', maxLevel: 3,
+    levelNames: ['days of the week', 'months of the year', 'seasons'],
+  },
   letters: {
     id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
     levelNames: ['s a t p i n', 'adds m d g o c k', 'adds e u r h f b l', 'all small letters', 'big & small letters', 'all letters review'],
@@ -79,6 +99,11 @@ export const AGE_BANDS = {
       french: 2,    // greetings + numbers 1-5
       fractions: 0, // hidden
       reasoning: 2, // patterns + odd one out (no analogies/codes)
+      tricky: 0,    // red words are Reception+
+      money: 0,     // KS1 topic
+      time: 0,      // KS1 topic
+      calendar: 1,  // days of the week (preschool songs)
+      tracing: 2,   // mark-making & letter formation — a 4+ skill
     },
   },
   '4-7': { label: '4–7+', icon: '🦁', blurb: 'full curriculum to 7+', caps: null },
@@ -316,6 +341,45 @@ export const SHAPE_LEVELS = {
   2: ['circle', 'square', 'triangle', 'star', 'heart', 'rectangle', 'oval', 'diamond'],
 };
 export const SHAPE_COLOURS = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#ff8fb2'];
+
+// ---------------- tricky words (phonics "red words" — can't be sounded out) ----------------
+export const TRICKY_LEVELS = {
+  1: ['I', 'the', 'to', 'no', 'go', 'into'],
+  2: ['he', 'she', 'we', 'me', 'be', 'was', 'you', 'they', 'all', 'are', 'my', 'her'],
+  3: ['said', 'have', 'like', 'so', 'do', 'some', 'come', 'were', 'there', 'little', 'one', 'when', 'out', 'what'],
+  4: ['oh', 'their', 'people', 'Mr', 'Mrs', 'looked', 'called', 'asked', 'could'],
+};
+
+// ---------------- UK coins (KS1 money) ----------------
+export const COINS = [
+  { v: 1,   label: '1p',  say: 'one p',      col: '#c77b4a', kind: 'bronze' },
+  { v: 2,   label: '2p',  say: 'two p',      col: '#c77b4a', kind: 'bronze' },
+  { v: 5,   label: '5p',  say: 'five p',     col: '#b8c0cc', kind: 'silver' },
+  { v: 10,  label: '10p', say: 'ten p',      col: '#b8c0cc', kind: 'silver' },
+  { v: 20,  label: '20p', say: 'twenty p',   col: '#b8c0cc', kind: 'silver' },
+  { v: 50,  label: '50p', say: 'fifty p',    col: '#b8c0cc', kind: 'silver' },
+  { v: 100, label: '£1',  say: 'one pound',  col: '#e8c15a', kind: 'gold' },
+  { v: 200, label: '£2',  say: 'two pounds', col: '#e8c15a', kind: 'gold' },
+];
+export const COIN_LEVELS = { 1: [1, 2, 5, 10], 2: [1, 2, 5, 10, 20, 50, 100, 200] };
+
+// ---------------- calendar language (EYFS / Y1) ----------------
+export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+export const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+export const SEASON_MONTHS = {
+  spring: ['March', 'April', 'May'], summer: ['June', 'July', 'August'],
+  autumn: ['September', 'October', 'November'], winter: ['December', 'January', 'February'],
+};
+
+// ---------------- sticker album rewards ----------------
+// Common stickers for a good session; rare ones reserved for a perfect 5/5.
+export const STICKERS = {
+  common: ['🦊', '🐰', '🦁', '🐸', '🐼', '🐨', '🐷', '🐥', '🦆', '🐢', '🐙', '🦋',
+    '🐝', '🌻', '🌈', '🍓', '🍪', '⚽', '🚗', '✈️', '🚂', '🎈', '🎨', '🎸', '🥁', '🪁', '🧸', '🍦'],
+  rare: ['🏆', '👑', '💎', '🦄', '🚀', '🌟', '🎆', '🐉'],
+};
 
 // Reading material mapped to UK book bands.
 // Lilac = wordless picture talk; Pink = Phase 2 captions; Red = Phase 3;

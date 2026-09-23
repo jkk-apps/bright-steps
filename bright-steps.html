@@ -250,7 +250,42 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
 /* free-play piano: taller, relaxed keys for little hands */
 .piano.free { height: 300px; margin-top: 18px; max-width: 620px; }
 .piano.free .piano-key { font-size: 2rem; padding-bottom: 20px; }
-.free-piano-row { text-align: center; margin-top: 24px; }
+.free-piano-row { text-align: center; margin-top: 24px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* sticker album */
+.sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 12px; margin-top: 14px; }
+.sticker-cell { position: relative; background: #fff; border-radius: 16px; font-size: 2.4rem; padding: 12px 0; text-align: center; box-shadow: 0 3px 8px rgba(0,0,0,.08); animation: pop .3s; }
+.sticker-cell.rare { background: linear-gradient(160deg, #fff8d6, #ffe89a); box-shadow: 0 0 14px rgba(255, 200, 40, .55); }
+.sticker-cell.empty { opacity: .18; filter: grayscale(1); box-shadow: none; animation: none; }
+.sticker-count { position: absolute; top: 4px; right: 8px; font-size: .8rem; font-weight: bold; color: #888; }
+.sticker-reveal { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 10px auto 4px; background: linear-gradient(160deg, #fff8d6, #ffe89a); border: 3px solid #f0c93e; border-radius: 20px; padding: 12px 26px; cursor: pointer; font-family: inherit; animation: pop .5s; }
+.sticker-reveal-text { font-size: 1.05rem; font-weight: bold; color: #7a5a00; }
+.sticker-big { font-size: 3.4rem; line-height: 1.2; }
+.sticker-reveal-sub { font-size: .8rem; color: #a08030; }
+
+/* milestone certificate */
+.certificate { max-width: 540px; margin: 18px auto; background: #fffdf4; border: 6px double #d4af37; border-radius: 20px; padding: 30px 24px; text-align: center; box-shadow: 0 14px 34px rgba(0,0,0,.14); animation: rise .5s ease; }
+.cert-stars { font-size: 1.6rem; letter-spacing: 8px; }
+.cert-heading { font-size: 1.5rem; font-weight: bold; color: #8a6d1d; letter-spacing: 2px; margin: 6px 0 10px; text-transform: uppercase; }
+.cert-avatar { font-size: 3.4rem; }
+.cert-name { font-size: 2.2rem; font-weight: bold; color: var(--theme); margin: 4px 0; }
+.cert-text { color: #666; font-size: 1.1rem; margin: 4px 0; }
+.cert-award { font-size: 1.5rem; font-weight: bold; color: #333; margin: 6px 0; }
+.cert-date { color: #999; font-size: .95rem; margin-top: 10px; font-style: italic; }
+.cert-row { padding: 7px 0; border-bottom: 1px solid #f0f0f6; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cert-row .profile-sub { margin-left: auto; }
+
+/* coins (money module) */
+.coin { display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--coin-col, #b8c0cc); box-shadow: inset 0 0 0 .09em rgba(255,255,255,.5), 0 3px 6px rgba(0,0,0,.18); vertical-align: middle; }
+.coin span { font-size: .36em; font-weight: 700; color: rgba(40,30,10,.72); }
+
+/* tracing (finger letter formation) */
+.trace-wrap { position: relative; width: min(calc(100vw - 60px), 340px); margin: 6px auto; aspect-ratio: 1; background: #fff; border: 3px dashed #d8d8e4; border-radius: 18px; overflow: hidden; }
+.trace-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.trace-draw { touch-action: none; cursor: crosshair; }
+
+/* sound-it-out helper button (words game) */
+.sound-out { display: inline-block; margin-top: 8px; font-family: inherit; font-size: 1rem; font-weight: bold; color: var(--theme); background: var(--theme-soft); border: none; border-radius: 999px; padding: 8px 18px; cursor: pointer; }
 /* always-on reminder for grown-ups: phone must be set to ring for sound */
 .sound-note { text-align: center; color: #8a8699; font-size: .9rem; margin: 14px auto 0; max-width: 420px; }
 /* shown only when a key tap produced no audio (device muted/interrupted) */
@@ -682,6 +717,8 @@ function addProfile(name, avatar, ageBand) {
     stats: {},
     progress: {},
     hiddenSkills: [],   // parent-controlled per-child module visibility
+    stickers: [],       // sticker album: emoji rewards earned per session
+    certificates: [],   // { skill, level, at } — first time each level is reached
     createdAt: Date.now(),
   };
   state.active = id;
@@ -723,6 +760,31 @@ function isSkillVisible(profile, skillId) {
   if (!p) return true;
   if (bandCap(profileBand(p), skillId) === 0) return false;
   return !(p.hiddenSkills || []).includes(skillId);
+}
+
+// ---------------- rewards ----------------
+// Award a sticker to the active child (rare pool for perfect sessions).
+function awardSticker(rare = false) {
+  const p = activeProfile();
+  if (!p) return null;
+  const pool = rare ? STICKERS.rare : STICKERS.common;
+  const s = pool[Math.floor(Math.random() * pool.length)];
+  (p.stickers ||= []).push(s);
+  save();
+  return s;
+}
+
+// Record a level certificate — only the FIRST time that level is reached.
+// Returns the certificate, or null if it was already earned before.
+function awardCertificate(skill, level) {
+  const p = activeProfile();
+  if (!p) return null;
+  const list = (p.certificates ||= []);
+  if (list.some(c => c.skill === skill && c.level === level)) return null;
+  const cert = { skill, level, at: Date.now() };
+  list.push(cert);
+  save();
+  return cert;
 }
 
 // Overall accuracy across all skills for one profile (or the active one)
@@ -845,6 +907,26 @@ const SKILLS = {
     id: 'shapes', name: 'Shapes', icon: '🔷', colour: '#e17055', maxLevel: 2,
     levelNames: ['first shapes', 'more shapes'],
   },
+  tricky: {
+    id: 'tricky', name: 'Tricky Words', icon: '📕', colour: '#b71540', maxLevel: 4,
+    levelNames: ['phase 2 red words', 'phase 3 red words', 'phase 4 red words', 'phase 5 red words'],
+  },
+  tracing: {
+    id: 'tracing', name: 'Tracing', icon: '✍️', colour: '#596275', maxLevel: 2,
+    levelNames: ['letters', 'numbers'],
+  },
+  money: {
+    id: 'money', name: 'Money', icon: '🪙', colour: '#b7791f', maxLevel: 3,
+    levelNames: ['coins to 10p', 'all coins', 'adding coins'],
+  },
+  time: {
+    id: 'time', name: 'Time', icon: '🕐', colour: '#30336b', maxLevel: 3,
+    levelNames: ["o'clock", 'half past', 'quarter hours'],
+  },
+  calendar: {
+    id: 'calendar', name: 'Days & Months', icon: '📅', colour: '#38ada9', maxLevel: 3,
+    levelNames: ['days of the week', 'months of the year', 'seasons'],
+  },
   letters: {
     id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
     levelNames: ['s a t p i n', 'adds m d g o c k', 'adds e u r h f b l', 'all small letters', 'big & small letters', 'all letters review'],
@@ -895,6 +977,11 @@ const AGE_BANDS = {
       french: 2,    // greetings + numbers 1-5
       fractions: 0, // hidden
       reasoning: 2, // patterns + odd one out (no analogies/codes)
+      tricky: 0,    // red words are Reception+
+      money: 0,     // KS1 topic
+      time: 0,      // KS1 topic
+      calendar: 1,  // days of the week (preschool songs)
+      tracing: 2,   // mark-making & letter formation — a 4+ skill
     },
   },
   '4-7': { label: '4–7+', icon: '🦁', blurb: 'full curriculum to 7+', caps: null },
@@ -1133,6 +1220,45 @@ const SHAPE_LEVELS = {
 };
 const SHAPE_COLOURS = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#ff8fb2'];
 
+// ---------------- tricky words (phonics "red words" — can't be sounded out) ----------------
+const TRICKY_LEVELS = {
+  1: ['I', 'the', 'to', 'no', 'go', 'into'],
+  2: ['he', 'she', 'we', 'me', 'be', 'was', 'you', 'they', 'all', 'are', 'my', 'her'],
+  3: ['said', 'have', 'like', 'so', 'do', 'some', 'come', 'were', 'there', 'little', 'one', 'when', 'out', 'what'],
+  4: ['oh', 'their', 'people', 'Mr', 'Mrs', 'looked', 'called', 'asked', 'could'],
+};
+
+// ---------------- UK coins (KS1 money) ----------------
+const COINS = [
+  { v: 1,   label: '1p',  say: 'one p',      col: '#c77b4a', kind: 'bronze' },
+  { v: 2,   label: '2p',  say: 'two p',      col: '#c77b4a', kind: 'bronze' },
+  { v: 5,   label: '5p',  say: 'five p',     col: '#b8c0cc', kind: 'silver' },
+  { v: 10,  label: '10p', say: 'ten p',      col: '#b8c0cc', kind: 'silver' },
+  { v: 20,  label: '20p', say: 'twenty p',   col: '#b8c0cc', kind: 'silver' },
+  { v: 50,  label: '50p', say: 'fifty p',    col: '#b8c0cc', kind: 'silver' },
+  { v: 100, label: '£1',  say: 'one pound',  col: '#e8c15a', kind: 'gold' },
+  { v: 200, label: '£2',  say: 'two pounds', col: '#e8c15a', kind: 'gold' },
+];
+const COIN_LEVELS = { 1: [1, 2, 5, 10], 2: [1, 2, 5, 10, 20, 50, 100, 200] };
+
+// ---------------- calendar language (EYFS / Y1) ----------------
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+const SEASON_MONTHS = {
+  spring: ['March', 'April', 'May'], summer: ['June', 'July', 'August'],
+  autumn: ['September', 'October', 'November'], winter: ['December', 'January', 'February'],
+};
+
+// ---------------- sticker album rewards ----------------
+// Common stickers for a good session; rare ones reserved for a perfect 5/5.
+const STICKERS = {
+  common: ['🦊', '🐰', '🦁', '🐸', '🐼', '🐨', '🐷', '🐥', '🦆', '🐢', '🐙', '🦋',
+    '🐝', '🌻', '🌈', '🍓', '🍪', '⚽', '🚗', '✈️', '🚂', '🎈', '🎨', '🎸', '🥁', '🪁', '🧸', '🍦'],
+  rare: ['🏆', '👑', '💎', '🦄', '🚀', '🌟', '🎆', '🐉'],
+};
+
 // Reading material mapped to UK book bands.
 // Lilac = wordless picture talk; Pink = Phase 2 captions; Red = Phase 3;
 // Yellow = Phase 4; Blue/Green = Phase 5 and longer sentences.
@@ -1302,6 +1428,8 @@ const ANALOGIES = [
 // ---------------------------------------------------------------------------
 
 // ---------- small helpers ----------
+const escH = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const shuffle = a => {
@@ -1783,7 +1911,10 @@ function genWords(level, method) {
       .map(w => ({ html: WORD_EMOJI[w], value: w }));
     return {
       type: 'choice',
-      prompt: { html: `<div class="word">${target}</div>`, text: 'Sound it out, then tap the picture!', speak: 'Sound out the word, then tap the picture.' },
+      prompt: {
+        html: `<div class="word">${target}</div><button class="sound-out" data-soundout="${escH(target)}">🔤 Sound it out</button>`,
+        text: 'Sound it out, then tap the picture!', speak: 'Sound out the word, then tap the picture. Tap the sound-it-out button if you need help.',
+      },
       options, answer: target,
     };
   }
@@ -1794,7 +1925,10 @@ function genWords(level, method) {
     const options = shuffle([target, ...distract]).map(w => ({ html: w, value: w, cls: 'word-option' }));
     return {
       type: 'choice',
-      prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the word!', speak: `Tap the word ${target}.` },
+      prompt: {
+        html: `<div class="big-letter">👂</div><button class="sound-out" data-soundout="${escH(target)}">🔤 Sound it out</button>`,
+        text: 'Listen, then tap the word!', speak: `Tap the word ${target}.`,
+      },
       options, answer: target,
     };
   }
@@ -1811,7 +1945,7 @@ function genWords(level, method) {
   return {
     type: 'build',
     prompt: {
-      html: WORD_EMOJI[target] ? `<div class="emoji-row">${WORD_EMOJI[target]}</div>` : '<div class="big-letter">👂</div>',
+      html: `${WORD_EMOJI[target] ? `<div class="emoji-row">${WORD_EMOJI[target]}</div>` : '<div class="big-letter">👂</div>'}<button class="sound-out" data-soundout="${escH(target)}">🔤 Sound it out</button>`,
       speak: `Spell the word ${target}.`,
       text: 'Tap the letters to build the word!',
     },
@@ -2305,10 +2439,254 @@ function genShapes(level, method) {
   return { type: 'choice', prompt, options, answer: target };
 }
 
+// ---------- tricky words (phonics "red words") ----------
+function genTricky(level, method) {
+  const pool = TRICKY_LEVELS[level];
+  const target = pick(pool);
+  const others = pool.filter(w => w !== target);
+
+  if (method === 'match') {
+    const ws = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match the same words!', speak: 'Match the words that are the same.' },
+      pairs: ws.map(w => ({ left: { html: w, cls: 'sentence-mini', say: w }, right: { html: w, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') {
+    // spell the red word from letter tiles — the classic way to learn them
+    return {
+      type: 'build',
+      prompt: { html: '<div class="big-letter">👂</div>', speak: `Spell the word ${target}.`, text: 'Tap the letters to build the word!' },
+      tiles: target.split(''), answer: target.split(''),
+    };
+  }
+  const options = shuffle([target, ...sample(others, 3)]).map(w => ({ html: w, value: w, cls: 'word-option' }));
+  const prompt = method === 'look'
+    ? { html: `<div class="word">${target}</div>`, text: 'Remember this word!', speak: `This word is ${target}. Tap ${target}.` }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the word!', speak: `Tap the word ${target}.` };
+  return { type: 'choice', prompt, options, answer: target };
+}
+
+// ---------- telling the time (KS1: o'clock, half past; 7+ stretch: quarters) ----------
+function fmtTime(h, m) {
+  if (m === 0) return `${h} o'clock`;
+  if (m === 30) return `half past ${h}`;
+  if (m === 15) return `quarter past ${h}`;
+  return `quarter to ${h === 12 ? 1 : h + 1}`;
+}
+
+function makeTime(level) {
+  const mins = level === 1 ? [0] : level === 2 ? [0, 30] : [0, 15, 30, 45];
+  const m = pick(mins);
+  const h = rand(1, 12);
+  return { h, m, key: `${h}:${m}` };
+}
+
+function clockSvg(h, m, size = 96) {
+  const hand = (ang, len, w) => {
+    const rad = (ang - 90) * Math.PI / 180;
+    return `<line x1="50" y1="50" x2="${(50 + Math.cos(rad) * len).toFixed(1)}" y2="${(50 + Math.sin(rad) * len).toFixed(1)}" stroke="#333" stroke-width="${w}" stroke-linecap="round"/>`;
+  };
+  let ticks = '';
+  for (let i = 0; i < 12; i++) {
+    const a = i * 30 * Math.PI / 180;
+    ticks += `<circle cx="${(50 + Math.sin(a) * 42).toFixed(1)}" cy="${(50 - Math.cos(a) * 42).toFixed(1)}" r="2.4" fill="#999"/>`;
+  }
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img">`
+    + `<circle cx="50" cy="50" r="47" fill="#fff" stroke="#333" stroke-width="3"/>${ticks}`
+    + hand((h % 12) * 30 + m * 0.5, 24, 5) + hand(m * 6, 36, 3.5)
+    + `<circle cx="50" cy="50" r="3.5" fill="#333"/></svg>`;
+}
+
+function genTime(level, method) {
+  const t = makeTime(level);
+  const label = fmtTime(t.h, t.m);
+
+  if (method === 'match') {
+    const three = []; const seen = new Set(); let g = 0;
+    while (three.length < 3 && g++ < 100) {
+      const d = makeTime(level); const l = fmtTime(d.h, d.m);
+      if (!seen.has(l)) { seen.add(l); three.push({ d, l }); }
+    }
+    return {
+      type: 'match',
+      prompt: { text: 'Match each clock to the time!', speak: 'Match the clocks to the times.' },
+      pairs: three.map(x => ({ left: { html: clockSvg(x.d.h, x.d.m, 72) }, right: { html: x.l, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') {
+    const others = []; let g = 0;
+    while (others.length < 6 && g++ < 120) {
+      const d = makeTime(level);
+      if (fmtTime(d.h, d.m) !== label) others.push(d);
+    }
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: clockSvg(t.h, t.m, 62), match: true })),
+      ...others.map(d => ({ html: clockSvg(d.h, d.m, 62), match: false })),
+    ]);
+    return { type: 'hunt', prompt: { speak: `Tap every clock that shows ${label}.`, text: `Tap all the clocks showing ${label}!` }, tiles };
+  }
+  if (method === 'look') {
+    const set = new Set([label]); let g = 0;
+    while (set.size < 3 && g++ < 100) {
+      const d = makeTime(level);
+      set.add(fmtTime(d.h, d.m));
+    }
+    const options = shuffle([...set]).map(l => ({ html: l, value: l, cls: 'word-option' }));
+    return {
+      type: 'choice',
+      prompt: { html: clockSvg(t.h, t.m, 140), text: 'What time is it?', speak: 'What time does this clock show?' },
+      options, answer: label,
+    };
+  }
+  // hear: spoken time, tap the right clock face
+  const opts = new Map([[t.key, t]]); let g = 0;
+  while (opts.size < 3 && g++ < 100) { const d = makeTime(level); if (!opts.has(d.key)) opts.set(d.key, d); }
+  const options = shuffle([...opts.values()]).map(d => ({ html: clockSvg(d.h, d.m, 80), value: d.key }));
+  return {
+    type: 'choice',
+    prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the clock!', speak: `Tap the clock that shows ${label}.` },
+    options, answer: t.key,
+  };
+}
+
+// ---------- UK coins (KS1 money) ----------
+const coinHtml = (c, px = 56) =>
+  `<span class="coin" style="--coin-col:${c.col};font-size:${px}px"><span>${c.label}</span></span>`;
+
+function genCoinTotal(method) {
+  const pool = COINS.filter(c => c.v <= 50);
+  let a = pick(pool), b = pick(pool), guard = 0;
+  while (a.v + b.v > 90 && guard++ < 60) { a = pick(pool); b = pick(pool); }
+  const total = a.v + b.v;
+  const speak = `What is ${a.say} add ${b.say}?`;
+
+  if (method === 'match') {
+    const pairs = []; const seen = new Set(); let g = 0;
+    while (pairs.length < 3 && g++ < 120) {
+      const x = pick(pool), y = pick(pool); const t = x.v + y.v;
+      if (t <= 90 && !seen.has(t)) { seen.add(t); pairs.push({ x, y, t }); }
+    }
+    return {
+      type: 'match',
+      prompt: { text: 'Match the coins to the total!', speak: 'Match each pair of coins to how much they make altogether.' },
+      pairs: pairs.map(p => ({ left: { html: `${coinHtml(p.x, 40)} ${coinHtml(p.y, 40)}` }, right: { html: `${p.t}p`, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') return genMoney(2, 'play'); // coin hunts stay simple; totals are thinky
+  const options = labelOptions(total, [10, -10, 5, -5, 2, -2, 1, -1], v => `${v}p`)
+    .map(l => ({ html: l, value: l, cls: 'word-option' }));
+  const prompt = method === 'look'
+    ? { html: `<div class="emoji-row">${coinHtml(a, 64)} ➕ ${coinHtml(b, 64)}</div>`, text: 'How much altogether?', speak }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the total!', speak };
+  return { type: 'choice', prompt, options, answer: `${total}p` };
+}
+
+function genMoney(level, method) {
+  if (level === 3) return genCoinTotal(method);
+  const pool = COINS.filter(c => COIN_LEVELS[level].includes(c.v));
+  const target = pick(pool);
+  const others = pool.filter(c => c !== target);
+
+  if (method === 'match') {
+    const three = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each coin to its value!', speak: 'Match the coins to how much they are worth.' },
+      pairs: three.map(c => ({ left: { html: coinHtml(c, 48) }, right: { html: c.label, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') {
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: coinHtml(target, 48), match: true })),
+      ...sample(others, Math.min(6, others.length)).map(c => ({ html: coinHtml(c, 48), match: false })),
+    ]);
+    return { type: 'hunt', prompt: { speak: `Tap every ${target.say} coin.`, text: `Tap all the ${target.label} coins!` }, tiles };
+  }
+  if (method === 'look') {
+    const options = shuffle([target, ...sample(others, 3)]).map(c => ({ html: c.label, value: c.label, cls: 'word-option' }));
+    return {
+      type: 'choice',
+      prompt: { html: coinHtml(target, 100), text: 'How much is this coin?', speak: 'How much is this coin worth?' },
+      options, answer: target.label,
+    };
+  }
+  const options = shuffle([target, ...sample(others, 3)]).map(c => ({ html: coinHtml(c, 60), value: c.label }));
+  return {
+    type: 'choice',
+    prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the coin!', speak: `Tap the ${target.say} coin.` },
+    options, answer: target.label,
+  };
+}
+
+// ---------- days, months & seasons (EYFS / Y1 calendar language) ----------
+function genCalendar(level, method) {
+  if (level === 3 && method === 'match') {
+    const seasons = sample(SEASONS, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each season to one of its months!', speak: 'Match the seasons to their months.' },
+      pairs: seasons.map(s => ({ left: { html: s, cls: 'sentence-mini' }, right: { html: pick(SEASON_MONTHS[s]), cls: 'sentence-mini' } })),
+    };
+  }
+  const items = level === 1 ? DAYS : level === 2 ? MONTHS : SEASONS;
+  const unit = level === 1 ? 'day' : level === 2 ? 'month' : 'season';
+
+  if (method === 'play') {
+    // put three in order — build type places them left to right
+    const start = rand(0, items.length - 3);
+    const trio = items.slice(start, start + 3);
+    return {
+      type: 'build',
+      prompt: { html: '<div class="big-letter">📅</div>', speak: `Put the ${unit}s in the right order.`, text: `Tap the ${unit}s in order!` },
+      tiles: shuffle([...trio]), answer: trio,
+    };
+  }
+  if (method === 'match') {
+    const starts = sample([...items.keys()], 3);
+    return {
+      type: 'match',
+      prompt: { text: `Match each ${unit} to the one that comes next!`, speak: `Match the ${unit}s to what comes next.` },
+      pairs: starts.map(i => ({ left: { html: items[i], cls: 'sentence-mini' }, right: { html: items[(i + 1) % items.length], cls: 'sentence-mini' } })),
+    };
+  }
+  const idx = rand(0, items.length - 1);
+  const before = Math.random() < 0.5;
+  const ans = items[(idx + (before ? -1 : 1) + items.length) % items.length];
+  const optSet = new Set([ans]);
+  for (const d of shuffle([2, -2, 3, -3, 4])) {
+    if (optSet.size >= 4) break;
+    optSet.add(items[(idx + d + items.length) % items.length]);
+  }
+  const options = shuffle([...optSet]).map(w => ({ html: w, value: w, cls: 'word-option' }));
+  const qSpeak = before ? `What ${unit} comes before ${items[idx]}?` : `What ${unit} comes after ${items[idx]}?`;
+  const prompt = method === 'look'
+    ? { html: `<div class="word" style="font-size:2.6rem">${items[idx]}</div>`, text: before ? 'What comes before?' : 'What comes next?', speak: qSpeak }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak: qSpeak };
+  return { type: 'choice', prompt, options, answer: ans };
+}
+
+// ---------- tracing (finger letter/number formation — 4+ handwriting readiness) ----------
+function genTracing(level) {
+  const pool = level === 1 ? 'abcdefghijklmnopqrstuvwxyz' : '0123456789';
+  const target = pick(pool.split(''));
+  const kind = level === 1 ? 'letter' : 'number';
+  return {
+    type: 'trace', target,
+    prompt: { text: `Trace the ${kind} with your finger!`, speak: `Trace the ${kind} ${target} with your finger. Then tap done.` },
+  };
+}
+
 function generateRound(skillId, level, method) {
   switch (skillId) {
     case 'numbers':   return genNumbers(level, method);
     case 'shapes':    return genShapes(level, method);
+    case 'tricky':    return genTricky(level, method);
+    case 'time':      return genTime(level, method);
+    case 'money':     return genMoney(level, method);
+    case 'calendar':  return genCalendar(level, method);
+    case 'tracing':   return genTracing(level, method);
     case 'maths':     return genMaths(level, method);
     case 'fractions': return genFractions(level, method);
     case 'reasoning': return genReasoning(level, method);
@@ -2620,7 +2998,102 @@ function renderPianoFreePlay() {
   speak('Tap the keys and make some music!');
 }
 
-const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano };
+// ---------- tracing renderer (canvas: dotted guide + finger drawing + coverage check) ----------
+function renderTrace(host, q, onDone) {
+  host.innerHTML = `
+    <div class="prompt"><div${speakable(q.prompt.speak)}>
+      ${spkBtn(q.prompt.speak, true)}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div></div>
+    <div class="trace-wrap">
+      <canvas class="trace-guide"></canvas>
+      <canvas class="trace-draw"></canvas>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="traceClear">🧽 Rub out</button>
+      <button class="btn" id="traceDone">✅ Done!</button>
+    </div>`;
+  speakPrompt(q.prompt);
+
+  const size = Math.min((window.innerWidth || 400) - 60, 340);
+  const guide = host.querySelector('.trace-guide');
+  const draw = host.querySelector('.trace-draw');
+  [guide, draw].forEach(c => { c.width = size; c.height = size; });
+
+  // the guide: pale letter with a dashed outline, like tracing paper
+  const g = guide.getContext('2d');
+  g.font = `700 ${Math.round(size * 0.72)}px Fredoka, 'Comic Sans MS', sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const cy = size / 2 + size * 0.02;
+  g.fillStyle = 'rgba(60,60,80,.16)';
+  g.fillText(q.target, size / 2, cy);
+  g.strokeStyle = 'rgba(60,60,80,.4)';
+  g.setLineDash([3, 9]);
+  g.lineWidth = 2;
+  g.strokeText(q.target, size / 2, cy);
+
+  const d = draw.getContext('2d');
+  d.lineCap = 'round'; d.lineJoin = 'round';
+  d.lineWidth = 26;
+  d.strokeStyle = (getComputedStyle(document.documentElement).getPropertyValue('--theme') || '').trim() || '#5f27cd';
+
+  let drawing = false, last = null, strokes = 0;
+  const pos = e => {
+    const r = draw.getBoundingClientRect();
+    return [(e.clientX - r.left) * (size / r.width), (e.clientY - r.top) * (size / r.height)];
+  };
+  draw.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    drawing = true; last = pos(e); strokes++;
+    try { draw.setPointerCapture(e.pointerId); } catch { /* older browsers */ }
+  });
+  draw.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    d.beginPath(); d.moveTo(last[0], last[1]); d.lineTo(p[0], p[1]); d.stroke();
+    last = p;
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => draw.addEventListener(ev, () => { drawing = false; }));
+
+  host.querySelector('#traceClear').onclick = () => d.clearRect(0, 0, size, size);
+
+  let attempts = 0, finished = false;
+  host.querySelector('#traceDone').onclick = () => {
+    if (finished) return;
+    // coverage: what fraction of the guide letter has drawing near it?
+    const gi = g.getImageData(0, 0, size, size).data;
+    const di = d.getImageData(0, 0, size, size).data;
+    const step = 5, R = 16;
+    let total = 0, covered = 0;
+    for (let y = 0; y < size; y += step) {
+      for (let x = 0; x < size; x += step) {
+        if (gi[(y * size + x) * 4 + 3] < 40) continue;
+        total++;
+        let hit = false;
+        outer: for (let dy = -R; dy <= R && !hit; dy += 4) {
+          for (let dx = -R; dx <= R; dx += 4) {
+            const yy = y + dy, xx = x + dx;
+            if (xx < 0 || yy < 0 || xx >= size || yy >= size) continue;
+            if (di[(yy * size + xx) * 4 + 3] > 60) { hit = true; break; }
+          }
+        }
+        if (hit) covered++;
+      }
+    }
+    const ratio = total ? covered / total : 0;
+    if (ratio >= 0.55) {
+      finished = true;
+      onDone(true);
+    } else {
+      attempts++;
+      speak(strokes === 0 ? 'Trace over the dotted lines with your finger!' : 'Nearly there! Follow the dotted lines a little more.');
+      if (attempts >= 3) { finished = true; onDone(false); }
+    }
+  };
+}
+
+const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano, trace: renderTrace };
 
 // ---------- session runner ----------
 const PRAISE = ['Well done!', 'Amazing!', 'Super star!', 'Brilliant!', 'You did it!'];
@@ -2630,7 +3103,7 @@ let session = null;
 
 function startSession(skillId, rounds = 5) {
   if (!activeProfile()) { nav('profiles'); return; } // must know who is learning
-  session = { skillId, round: 0, rounds, stars: 0, methods: {} };
+  session = { skillId, round: 0, rounds, stars: 0, methods: {}, pendingCert: null };
   renderRound();
 }
 
@@ -2660,6 +3133,11 @@ function renderRound() {
 function done(correct) {
   const { method, level } = session.current;
   const change = recordResult(session.skillId, method, correct, skillMax(null, session.skillId));
+  // first time reaching a new level => certificate (shown after the session)
+  if (change === 'up') {
+    const cert = awardCertificate(session.skillId, level + 1);
+    if (cert) session.pendingCert = cert;
+  }
   const rec = (session.methods[method] ||= { a: 0, c: 0 });
   rec.a++;
   if (correct) { rec.c++; session.stars++; }
@@ -2683,10 +3161,44 @@ function showFeedback(correct, change, cb) {
   setTimeout(() => { o.remove(); cb(); }, change === 'up' ? 2100 : 1400);
 }
 
+// Milestone certificate: full-screen, screenshot-friendly, then back to the summary.
+function renderCertificate(cert, cb) {
+  const app = document.getElementById('app');
+  const prof = activeProfile();
+  const skill = SKILLS[cert.skill];
+  const name = prof?.name || 'Superstar';
+  const date = new Date(cert.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  app.innerHTML = `
+    <div class="certificate">
+      <div class="cert-stars">🌟 🌟 🌟</div>
+      <div class="cert-heading">🏅 Certificate 🏅</div>
+      <div class="cert-avatar">${prof?.avatar || '🌟'}</div>
+      <div class="cert-name">${escH(name)}</div>
+      <div class="cert-text">has reached</div>
+      <div class="cert-award">Level ${cert.level} · ${skill.levelNames[cert.level - 1]}</div>
+      <div class="cert-text">in ${skill.icon} ${skill.name}</div>
+      <div class="cert-date">${date}</div>
+      <div class="btn-row"><button class="btn" id="certOk">🎉 Hooray!</button></div>
+    </div>`;
+  confetti();
+  speak(`Amazing! ${name} has reached level ${cert.level} in ${skill.name}! Here is your certificate!`);
+  document.getElementById('certOk').onclick = cb;
+}
+
 function renderSummary() {
+  // A freshly earned certificate takes the stage first, then the normal summary.
+  if (session.pendingCert) {
+    const cert = session.pendingCert;
+    session.pendingCert = null;
+    renderCertificate(cert, renderSummary);
+    return;
+  }
   const app = document.getElementById('app');
   const skill = SKILLS[session.skillId];
   const { stars, rounds } = session;
+  // Sticker album: perfect score = rare sticker, 3+/5 = common sticker.
+  const sticker = stars === rounds ? awardSticker(true)
+    : stars >= Math.ceil(rounds * 0.6) ? awardSticker(false) : null;
   const msg = stars === rounds ? 'Perfect! You are a superstar! 🌟'
     : stars >= rounds / 2 ? 'Great work! Keep it up! 💪'
     : 'Good try! Practice makes perfect! 🌱';
@@ -2698,6 +3210,12 @@ function renderSummary() {
     <div class="summary-card">
       <div class="summary-stars">${'⭐'.repeat(stars)}${'☆'.repeat(rounds - stars)}</div>
       <div class="summary-msg">${msg}</div>
+      ${sticker ? `
+        <button class="sticker-reveal" id="stickerBtn" aria-label="See your sticker album">
+          <span class="sticker-reveal-text">You earned a sticker!</span>
+          <span class="sticker-big">${sticker}</span>
+          <span class="sticker-reveal-sub">tap to see your album 🎁</span>
+        </button>` : ''}
       <div class="btn-row">
         <button class="btn again-big" id="againBtn" aria-label="Play again">
           <span class="big-emoji">🔁</span><span class="btn-label">Play again</span>
@@ -2708,9 +3226,11 @@ function renderSummary() {
       </div>
     </div>`;
   if (stars === rounds) starRain(); else confetti();
-  speak(`${msg} Tap the big orange button to play again, or tap the house to try something else.`);
+  speak(`${msg} ${sticker ? 'You earned a sticker for your album! ' : ''}Tap the big orange button to play again, or tap the house to try something else.`);
   document.getElementById('againBtn').onclick = () => startSession(skillId);
   document.getElementById('homeBtn').onclick = () => nav('home');
+  const stickerBtn = document.getElementById('stickerBtn');
+  if (stickerBtn) stickerBtn.onclick = () => nav('album');
 }
 
 function confetti() {
@@ -2818,7 +3338,10 @@ function renderHome() {
           </div>`;
       }).join('')}
     </div>
-    <p class="free-piano-row"><button class="btn secondary" id="freePianoBtn">🎹 Just play the piano</button></p>
+    <p class="free-piano-row">
+      <button class="btn secondary" id="albumBtn">🎁 My Stickers (${(prof.stickers || []).length})</button>
+      <button class="btn secondary" id="freePianoBtn">🎹 Just play the piano</button>
+    </p>
     <p class="parent-link"><button class="parent-gate-link" id="parentBtn">🔒 Grown-ups</button></p>`;
 
   document.querySelectorAll('.skill-card').forEach(card => {
@@ -2826,6 +3349,7 @@ function renderHome() {
   });
   document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
   document.getElementById('freePianoBtn').onclick = () => renderPianoFreePlay();
+  document.getElementById('albumBtn').onclick = () => renderAlbum();
   document.getElementById('parentBtn').onclick = () => renderParentGate();
   document.getElementById('switchBtn').onclick = () => nav('profiles');
 }
@@ -2839,6 +3363,35 @@ function pickSmartSkill() {
     if (aa !== ab) return aa - ab;
     return (skillAccuracy(a) ?? 0.5) - (skillAccuracy(b) ?? 0.5);
   })[0];
+}
+
+// ---------------- sticker album ----------------
+function renderAlbum() {
+  const prof = activeProfile();
+  if (!prof) { renderProfiles(); return; }
+  applyTheme();
+  const stickers = prof.stickers || [];
+  const counts = {};
+  stickers.forEach(s => { counts[s] = (counts[s] || 0) + 1; });
+  const earned = Object.keys(counts);
+  // uncollected stickers show as faint silhouettes so there's something to aim for
+  const all = [...STICKERS.rare, ...STICKERS.common];
+  const missing = all.filter(s => !counts[s]);
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="topbar"><button class="home-btn" id="homeBtn">🏠</button>
+      <div class="session-title">🎁 ${esc(prof.name || 'My')}'s Stickers</div><span></span></div>
+    <p class="greeting">You have collected <b>${stickers.length}</b> sticker${stickers.length === 1 ? '' : 's'}!
+      ${stickers.length === 0 ? 'Finish a game to earn your first one!' : 'Get 5 stars for a rare one!'}</p>
+    <div class="sticker-grid">
+      ${earned.map(s => `
+        <div class="sticker-cell ${STICKERS.rare.includes(s) ? 'rare' : ''}">${s}
+          ${counts[s] > 1 ? `<span class="sticker-count">×${counts[s]}</span>` : ''}
+        </div>`).join('')}
+      ${missing.map(s => `<div class="sticker-cell empty">${s}</div>`).join('')}
+    </div>`;
+  document.getElementById('homeBtn').onclick = () => nav('home');
 }
 
 // ---------------- profile picker ----------------
@@ -3040,6 +3593,14 @@ function renderDashboard() {
         <button class="btn small secondary" id="addProfileBtn">➕ Add child</button>
       </div>
     </div>
+    ${prof ? `
+    <div class="dash-card">
+      <div class="dash-head"><span class="icon">🏅</span><span class="name">Certificates — ${prof.avatar} ${esc(prof.name || 'Unnamed')}</span></div>
+      ${(prof.certificates || []).length ? (prof.certificates || []).slice(-8).reverse().map(c => `
+        <div class="cert-row">${SKILLS[c.skill]?.icon || '⭐'} Level ${c.level} · ${SKILLS[c.skill]?.levelNames[c.level - 1] || ''}
+          <span class="profile-sub">${new Date(c.at).toLocaleDateString('en-GB')}</span>
+        </div>`).join('') : '<p class="dash-note">No certificates yet — one is earned the first time each new level is reached.</p>'}
+    </div>` : ''}
     <div class="dash-card">
       <div class="settings-row">
         <label>Learning method:
@@ -3153,6 +3714,7 @@ function route(where) {
   stopSpeak();
   if (where === 'dashboard') renderDashboard();
   else if (where === 'profiles') renderProfiles();
+  else if (where === 'album') renderAlbum();
   else renderHome();
 }
 
@@ -3165,6 +3727,13 @@ if (typeof window !== 'undefined') {
 // instruction to hear it again). Event delegation survives re-renders.
 if (typeof document !== 'undefined') {
   document.addEventListener('click', e => {
+    // "Sound it out" helper (words game): letters one by one, then the whole word
+    const so = e.target.closest('[data-soundout]');
+    if (so && so.dataset.soundout) {
+      const w = so.dataset.soundout;
+      speakSeq([...w.split('').map(l => ({ text: l })), { text: w }]);
+      return;
+    }
     const s = e.target.closest('[data-say]');
     if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say), { lang: s.dataset.lang || undefined });
   });

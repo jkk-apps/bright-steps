@@ -39,7 +39,11 @@ standalone display, offline caching via `sw.js`):
 | 🔢 Number recognition | 1–5 → 0–9 → 10–20 (with one more/one less & ordering at early levels) → tens → 0–100 → hundreds to 1,000 | EYFS / Year 1 → Year 3 |
 | ➕ Maths | + to 5 → + to 10 → − to 10 → ± to 20 → ×2,5,10 → ÷2,5,10 → missing numbers → ± to 100 → ± to 1,000 → ×3,4,6 → ×7–12 → ÷ any table → mixed review → money problems → measure & two-step problems | KS1 → 7+ stretch (Y3/Y4) |
 | 🔤 Letter recognition | s a t p i n → cumulative Phase 2 sets → full alphabet → case matching | Phonics Phase 2 |
-| 📖 SATPIN words | satpin-only CVC → Phase 2 CVC → Phase 3 digraphs → Phase 4 blends | Phonics Phases 2–4 |
+| 📖 SATPIN words | satpin-only CVC → Phase 2 CVC → Phase 3 digraphs → Phase 4 blends (with a "sound it out" helper) | Phonics Phases 2–4 |
+| 📕 Tricky words | Phase 2 → Phase 5 "red words" (the, said, was, could…) — recognise & spell | Phonics Phases 2–5 |
+| ✍️ Tracing | finger-tracing letters → numbers over dotted guides | 4+ letter formation / EYFS mark-making |
+| 🪙 Money | coins to 10p → all UK coins → adding two coins | KS1 |
+| 🕐 Time | o'clock → half past → quarter past & quarter to | KS1 → Y2 |
 | 🎨 Colours | 4 → 8 → 11 colours → reading colour words | EYFS |
 | 📚 Reading | Lilac (wordless) → Pink → Red → Yellow → Blue → Green → Orange → Turquoise → Purple (upper bands add inference & vocabulary questions) | UK book bands → 7+ comprehension |
 | 🍕 Fractions | halves & quarters → thirds → equivalent fractions (1/2 = 2/4 = 3/6…) | Year 2 → 7+ |
@@ -47,7 +51,16 @@ standalone display, offline caching via `sw.js`):
 | 🔷 Shapes | circle, square, triangle, star, heart → + rectangle, oval, diamond (shape constancy across colours/sizes, real-world matching) | 4+ school readiness / EYFS |
 | 🎹 Piano | C-D-E → C-G → one octave → two octaves (playable keyboard, ear training, copy-the-tune) | early music |
 | 🇪🇸 Spanish | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
+| 📅 Days & months | days of the week → months → seasons & their months | EYFS / Y1 |
 | 🇫🇷 French | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
+
+## Rewards: stickers & certificates
+
+Finishing a game with 3+ stars earns a **sticker** for the child's **🎁 sticker album**
+(a perfect 5/5 earns a rare gold-glow sticker). The album lives on the home screen and shows
+faint silhouettes of what's still to collect. Reaching a level for the **first time** earns a
+**milestone certificate** — a full-screen, screenshot-friendly celebration with the child's
+name, avatar and date — and certificates are logged in the Parent Dashboard.
 
 The piano also has a **free-play mode** (“🎹 Just play the piano” on the home screen): an open
 keyboard with the Boomwhacker colours and letter labels always on, no testing or scoring — each

@@ -2,7 +2,7 @@
 // progress. Tracks success per skill per learning method, chooses methods
 // weighted by success (with exploration), and moves levels up/down.
 
-import { bandCap } from './data.js';
+import { bandCap, STICKERS } from './data.js';
 
 export const METHODS = ['look', 'hear', 'match', 'play'];
 export const METHOD_META = {
@@ -98,6 +98,8 @@ export function addProfile(name, avatar, ageBand) {
     stats: {},
     progress: {},
     hiddenSkills: [],   // parent-controlled per-child module visibility
+    stickers: [],       // sticker album: emoji rewards earned per session
+    certificates: [],   // { skill, level, at } — first time each level is reached
     createdAt: Date.now(),
   };
   state.active = id;
@@ -139,6 +141,31 @@ export function isSkillVisible(profile, skillId) {
   if (!p) return true;
   if (bandCap(profileBand(p), skillId) === 0) return false;
   return !(p.hiddenSkills || []).includes(skillId);
+}
+
+// ---------------- rewards ----------------
+// Award a sticker to the active child (rare pool for perfect sessions).
+export function awardSticker(rare = false) {
+  const p = activeProfile();
+  if (!p) return null;
+  const pool = rare ? STICKERS.rare : STICKERS.common;
+  const s = pool[Math.floor(Math.random() * pool.length)];
+  (p.stickers ||= []).push(s);
+  save();
+  return s;
+}
+
+// Record a level certificate — only the FIRST time that level is reached.
+// Returns the certificate, or null if it was already earned before.
+export function awardCertificate(skill, level) {
+  const p = activeProfile();
+  if (!p) return null;
+  const list = (p.certificates ||= []);
+  if (list.some(c => c.skill === skill && c.level === level)) return null;
+  const cert = { skill, level, at: Date.now() };
+  list.push(cert);
+  save();
+  return cert;
 }
 
 // Overall accuracy across all skills for one profile (or the active one)

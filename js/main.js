@@ -1,6 +1,6 @@
 // App entry point: routing + global speaker-button handling.
-import { renderHome, renderDashboard, renderProfiles } from './screens.js';
-import { speak, stopSpeak, setVoicePreference } from './speech.js';
+import { renderHome, renderDashboard, renderProfiles, renderAlbum } from './screens.js';
+import { speak, speakSeq, stopSpeak, setVoicePreference } from './speech.js';
 import { state, save } from './engine.js';
 import { unlockAudio } from './audio.js';
 
@@ -17,6 +17,7 @@ function route(where) {
   stopSpeak();
   if (where === 'dashboard') renderDashboard();
   else if (where === 'profiles') renderProfiles();
+  else if (where === 'album') renderAlbum();
   else renderHome();
 }
 
@@ -29,6 +30,13 @@ if (typeof window !== 'undefined') {
 // instruction to hear it again). Event delegation survives re-renders.
 if (typeof document !== 'undefined') {
   document.addEventListener('click', e => {
+    // "Sound it out" helper (words game): letters one by one, then the whole word
+    const so = e.target.closest('[data-soundout]');
+    if (so && so.dataset.soundout) {
+      const w = so.dataset.soundout;
+      speakSeq([...w.split('').map(l => ({ text: l })), { text: w }]);
+      return;
+    }
     const s = e.target.closest('[data-say]');
     if (s && s.dataset.say) speak(decodeURIComponent(s.dataset.say), { lang: s.dataset.lang || undefined });
   });

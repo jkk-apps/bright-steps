@@ -16,12 +16,15 @@ import {
   FRACTION_META, FRACTION_LEVELS, FRACTION_EQUIV,
   REASON_SHAPES, ODD_ONE_OUT, GO_TOGETHER, ANALOGIES,
   SHAPE_META, SHAPE_LEVELS, SHAPE_COLOURS,
+  TRICKY_LEVELS, COINS, COIN_LEVELS, DAYS, MONTHS, SEASONS, SEASON_MONTHS,
 } from './data.js';
-import { METHOD_META, recordResult, pickMethod, getLevel, activeProfile, skillMax } from './engine.js';
+import { METHOD_META, recordResult, pickMethod, getLevel, activeProfile, skillMax, awardSticker, awardCertificate } from './engine.js';
 import { speak, speakSeq, stopSpeak, speechAvailable } from './speech.js';
 import { playNote, playNotes, audioReady } from './audio.js';
 
 // ---------- small helpers ----------
+const escH = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const shuffle = a => {
@@ -503,7 +506,10 @@ function genWords(level, method) {
       .map(w => ({ html: WORD_EMOJI[w], value: w }));
     return {
       type: 'choice',
-      prompt: { html: `<div class="word">${target}</div>`, text: 'Sound it out, then tap the picture!', speak: 'Sound out the word, then tap the picture.' },
+      prompt: {
+        html: `<div class="word">${target}</div><button class="sound-out" data-soundout="${escH(target)}">🔤 Sound it out</button>`,
+        text: 'Sound it out, then tap the picture!', speak: 'Sound out the word, then tap the picture. Tap the sound-it-out button if you need help.',
+      },
       options, answer: target,
     };
   }
@@ -514,7 +520,10 @@ function genWords(level, method) {
     const options = shuffle([target, ...distract]).map(w => ({ html: w, value: w, cls: 'word-option' }));
     return {
       type: 'choice',
-      prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the word!', speak: `Tap the word ${target}.` },
+      prompt: {
+        html: `<div class="big-letter">👂</div><button class="sound-out" data-soundout="${escH(target)}">🔤 Sound it out</button>`,
+        text: 'Listen, then tap the word!', speak: `Tap the word ${target}.`,
+      },
       options, answer: target,
     };
   }
@@ -531,7 +540,7 @@ function genWords(level, method) {
   return {
     type: 'build',
     prompt: {
-      html: WORD_EMOJI[target] ? `<div class="emoji-row">${WORD_EMOJI[target]}</div>` : '<div class="big-letter">👂</div>',
+      html: `${WORD_EMOJI[target] ? `<div class="emoji-row">${WORD_EMOJI[target]}</div>` : '<div class="big-letter">👂</div>'}<button class="sound-out" data-soundout="${escH(target)}">🔤 Sound it out</button>`,
       speak: `Spell the word ${target}.`,
       text: 'Tap the letters to build the word!',
     },
@@ -1025,10 +1034,254 @@ function genShapes(level, method) {
   return { type: 'choice', prompt, options, answer: target };
 }
 
+// ---------- tricky words (phonics "red words") ----------
+function genTricky(level, method) {
+  const pool = TRICKY_LEVELS[level];
+  const target = pick(pool);
+  const others = pool.filter(w => w !== target);
+
+  if (method === 'match') {
+    const ws = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match the same words!', speak: 'Match the words that are the same.' },
+      pairs: ws.map(w => ({ left: { html: w, cls: 'sentence-mini', say: w }, right: { html: w, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') {
+    // spell the red word from letter tiles — the classic way to learn them
+    return {
+      type: 'build',
+      prompt: { html: '<div class="big-letter">👂</div>', speak: `Spell the word ${target}.`, text: 'Tap the letters to build the word!' },
+      tiles: target.split(''), answer: target.split(''),
+    };
+  }
+  const options = shuffle([target, ...sample(others, 3)]).map(w => ({ html: w, value: w, cls: 'word-option' }));
+  const prompt = method === 'look'
+    ? { html: `<div class="word">${target}</div>`, text: 'Remember this word!', speak: `This word is ${target}. Tap ${target}.` }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the word!', speak: `Tap the word ${target}.` };
+  return { type: 'choice', prompt, options, answer: target };
+}
+
+// ---------- telling the time (KS1: o'clock, half past; 7+ stretch: quarters) ----------
+function fmtTime(h, m) {
+  if (m === 0) return `${h} o'clock`;
+  if (m === 30) return `half past ${h}`;
+  if (m === 15) return `quarter past ${h}`;
+  return `quarter to ${h === 12 ? 1 : h + 1}`;
+}
+
+function makeTime(level) {
+  const mins = level === 1 ? [0] : level === 2 ? [0, 30] : [0, 15, 30, 45];
+  const m = pick(mins);
+  const h = rand(1, 12);
+  return { h, m, key: `${h}:${m}` };
+}
+
+function clockSvg(h, m, size = 96) {
+  const hand = (ang, len, w) => {
+    const rad = (ang - 90) * Math.PI / 180;
+    return `<line x1="50" y1="50" x2="${(50 + Math.cos(rad) * len).toFixed(1)}" y2="${(50 + Math.sin(rad) * len).toFixed(1)}" stroke="#333" stroke-width="${w}" stroke-linecap="round"/>`;
+  };
+  let ticks = '';
+  for (let i = 0; i < 12; i++) {
+    const a = i * 30 * Math.PI / 180;
+    ticks += `<circle cx="${(50 + Math.sin(a) * 42).toFixed(1)}" cy="${(50 - Math.cos(a) * 42).toFixed(1)}" r="2.4" fill="#999"/>`;
+  }
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img">`
+    + `<circle cx="50" cy="50" r="47" fill="#fff" stroke="#333" stroke-width="3"/>${ticks}`
+    + hand((h % 12) * 30 + m * 0.5, 24, 5) + hand(m * 6, 36, 3.5)
+    + `<circle cx="50" cy="50" r="3.5" fill="#333"/></svg>`;
+}
+
+function genTime(level, method) {
+  const t = makeTime(level);
+  const label = fmtTime(t.h, t.m);
+
+  if (method === 'match') {
+    const three = []; const seen = new Set(); let g = 0;
+    while (three.length < 3 && g++ < 100) {
+      const d = makeTime(level); const l = fmtTime(d.h, d.m);
+      if (!seen.has(l)) { seen.add(l); three.push({ d, l }); }
+    }
+    return {
+      type: 'match',
+      prompt: { text: 'Match each clock to the time!', speak: 'Match the clocks to the times.' },
+      pairs: three.map(x => ({ left: { html: clockSvg(x.d.h, x.d.m, 72) }, right: { html: x.l, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') {
+    const others = []; let g = 0;
+    while (others.length < 6 && g++ < 120) {
+      const d = makeTime(level);
+      if (fmtTime(d.h, d.m) !== label) others.push(d);
+    }
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: clockSvg(t.h, t.m, 62), match: true })),
+      ...others.map(d => ({ html: clockSvg(d.h, d.m, 62), match: false })),
+    ]);
+    return { type: 'hunt', prompt: { speak: `Tap every clock that shows ${label}.`, text: `Tap all the clocks showing ${label}!` }, tiles };
+  }
+  if (method === 'look') {
+    const set = new Set([label]); let g = 0;
+    while (set.size < 3 && g++ < 100) {
+      const d = makeTime(level);
+      set.add(fmtTime(d.h, d.m));
+    }
+    const options = shuffle([...set]).map(l => ({ html: l, value: l, cls: 'word-option' }));
+    return {
+      type: 'choice',
+      prompt: { html: clockSvg(t.h, t.m, 140), text: 'What time is it?', speak: 'What time does this clock show?' },
+      options, answer: label,
+    };
+  }
+  // hear: spoken time, tap the right clock face
+  const opts = new Map([[t.key, t]]); let g = 0;
+  while (opts.size < 3 && g++ < 100) { const d = makeTime(level); if (!opts.has(d.key)) opts.set(d.key, d); }
+  const options = shuffle([...opts.values()]).map(d => ({ html: clockSvg(d.h, d.m, 80), value: d.key }));
+  return {
+    type: 'choice',
+    prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the clock!', speak: `Tap the clock that shows ${label}.` },
+    options, answer: t.key,
+  };
+}
+
+// ---------- UK coins (KS1 money) ----------
+const coinHtml = (c, px = 56) =>
+  `<span class="coin" style="--coin-col:${c.col};font-size:${px}px"><span>${c.label}</span></span>`;
+
+function genCoinTotal(method) {
+  const pool = COINS.filter(c => c.v <= 50);
+  let a = pick(pool), b = pick(pool), guard = 0;
+  while (a.v + b.v > 90 && guard++ < 60) { a = pick(pool); b = pick(pool); }
+  const total = a.v + b.v;
+  const speak = `What is ${a.say} add ${b.say}?`;
+
+  if (method === 'match') {
+    const pairs = []; const seen = new Set(); let g = 0;
+    while (pairs.length < 3 && g++ < 120) {
+      const x = pick(pool), y = pick(pool); const t = x.v + y.v;
+      if (t <= 90 && !seen.has(t)) { seen.add(t); pairs.push({ x, y, t }); }
+    }
+    return {
+      type: 'match',
+      prompt: { text: 'Match the coins to the total!', speak: 'Match each pair of coins to how much they make altogether.' },
+      pairs: pairs.map(p => ({ left: { html: `${coinHtml(p.x, 40)} ${coinHtml(p.y, 40)}` }, right: { html: `${p.t}p`, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') return genMoney(2, 'play'); // coin hunts stay simple; totals are thinky
+  const options = labelOptions(total, [10, -10, 5, -5, 2, -2, 1, -1], v => `${v}p`)
+    .map(l => ({ html: l, value: l, cls: 'word-option' }));
+  const prompt = method === 'look'
+    ? { html: `<div class="emoji-row">${coinHtml(a, 64)} ➕ ${coinHtml(b, 64)}</div>`, text: 'How much altogether?', speak }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the total!', speak };
+  return { type: 'choice', prompt, options, answer: `${total}p` };
+}
+
+function genMoney(level, method) {
+  if (level === 3) return genCoinTotal(method);
+  const pool = COINS.filter(c => COIN_LEVELS[level].includes(c.v));
+  const target = pick(pool);
+  const others = pool.filter(c => c !== target);
+
+  if (method === 'match') {
+    const three = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each coin to its value!', speak: 'Match the coins to how much they are worth.' },
+      pairs: three.map(c => ({ left: { html: coinHtml(c, 48) }, right: { html: c.label, cls: 'sentence-mini' } })),
+    };
+  }
+  if (method === 'play') {
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: coinHtml(target, 48), match: true })),
+      ...sample(others, Math.min(6, others.length)).map(c => ({ html: coinHtml(c, 48), match: false })),
+    ]);
+    return { type: 'hunt', prompt: { speak: `Tap every ${target.say} coin.`, text: `Tap all the ${target.label} coins!` }, tiles };
+  }
+  if (method === 'look') {
+    const options = shuffle([target, ...sample(others, 3)]).map(c => ({ html: c.label, value: c.label, cls: 'word-option' }));
+    return {
+      type: 'choice',
+      prompt: { html: coinHtml(target, 100), text: 'How much is this coin?', speak: 'How much is this coin worth?' },
+      options, answer: target.label,
+    };
+  }
+  const options = shuffle([target, ...sample(others, 3)]).map(c => ({ html: coinHtml(c, 60), value: c.label }));
+  return {
+    type: 'choice',
+    prompt: { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the coin!', speak: `Tap the ${target.say} coin.` },
+    options, answer: target.label,
+  };
+}
+
+// ---------- days, months & seasons (EYFS / Y1 calendar language) ----------
+function genCalendar(level, method) {
+  if (level === 3 && method === 'match') {
+    const seasons = sample(SEASONS, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each season to one of its months!', speak: 'Match the seasons to their months.' },
+      pairs: seasons.map(s => ({ left: { html: s, cls: 'sentence-mini' }, right: { html: pick(SEASON_MONTHS[s]), cls: 'sentence-mini' } })),
+    };
+  }
+  const items = level === 1 ? DAYS : level === 2 ? MONTHS : SEASONS;
+  const unit = level === 1 ? 'day' : level === 2 ? 'month' : 'season';
+
+  if (method === 'play') {
+    // put three in order — build type places them left to right
+    const start = rand(0, items.length - 3);
+    const trio = items.slice(start, start + 3);
+    return {
+      type: 'build',
+      prompt: { html: '<div class="big-letter">📅</div>', speak: `Put the ${unit}s in the right order.`, text: `Tap the ${unit}s in order!` },
+      tiles: shuffle([...trio]), answer: trio,
+    };
+  }
+  if (method === 'match') {
+    const starts = sample([...items.keys()], 3);
+    return {
+      type: 'match',
+      prompt: { text: `Match each ${unit} to the one that comes next!`, speak: `Match the ${unit}s to what comes next.` },
+      pairs: starts.map(i => ({ left: { html: items[i], cls: 'sentence-mini' }, right: { html: items[(i + 1) % items.length], cls: 'sentence-mini' } })),
+    };
+  }
+  const idx = rand(0, items.length - 1);
+  const before = Math.random() < 0.5;
+  const ans = items[(idx + (before ? -1 : 1) + items.length) % items.length];
+  const optSet = new Set([ans]);
+  for (const d of shuffle([2, -2, 3, -3, 4])) {
+    if (optSet.size >= 4) break;
+    optSet.add(items[(idx + d + items.length) % items.length]);
+  }
+  const options = shuffle([...optSet]).map(w => ({ html: w, value: w, cls: 'word-option' }));
+  const qSpeak = before ? `What ${unit} comes before ${items[idx]}?` : `What ${unit} comes after ${items[idx]}?`;
+  const prompt = method === 'look'
+    ? { html: `<div class="word" style="font-size:2.6rem">${items[idx]}</div>`, text: before ? 'What comes before?' : 'What comes next?', speak: qSpeak }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak: qSpeak };
+  return { type: 'choice', prompt, options, answer: ans };
+}
+
+// ---------- tracing (finger letter/number formation — 4+ handwriting readiness) ----------
+function genTracing(level) {
+  const pool = level === 1 ? 'abcdefghijklmnopqrstuvwxyz' : '0123456789';
+  const target = pick(pool.split(''));
+  const kind = level === 1 ? 'letter' : 'number';
+  return {
+    type: 'trace', target,
+    prompt: { text: `Trace the ${kind} with your finger!`, speak: `Trace the ${kind} ${target} with your finger. Then tap done.` },
+  };
+}
+
 export function generateRound(skillId, level, method) {
   switch (skillId) {
     case 'numbers':   return genNumbers(level, method);
     case 'shapes':    return genShapes(level, method);
+    case 'tricky':    return genTricky(level, method);
+    case 'time':      return genTime(level, method);
+    case 'money':     return genMoney(level, method);
+    case 'calendar':  return genCalendar(level, method);
+    case 'tracing':   return genTracing(level, method);
     case 'maths':     return genMaths(level, method);
     case 'fractions': return genFractions(level, method);
     case 'reasoning': return genReasoning(level, method);
@@ -1340,7 +1593,102 @@ export function renderPianoFreePlay() {
   speak('Tap the keys and make some music!');
 }
 
-const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano };
+// ---------- tracing renderer (canvas: dotted guide + finger drawing + coverage check) ----------
+function renderTrace(host, q, onDone) {
+  host.innerHTML = `
+    <div class="prompt"><div${speakable(q.prompt.speak)}>
+      ${spkBtn(q.prompt.speak, true)}
+      <div class="prompt-text">${q.prompt.text || ''}</div>
+    </div></div>
+    <div class="trace-wrap">
+      <canvas class="trace-guide"></canvas>
+      <canvas class="trace-draw"></canvas>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="traceClear">🧽 Rub out</button>
+      <button class="btn" id="traceDone">✅ Done!</button>
+    </div>`;
+  speakPrompt(q.prompt);
+
+  const size = Math.min((window.innerWidth || 400) - 60, 340);
+  const guide = host.querySelector('.trace-guide');
+  const draw = host.querySelector('.trace-draw');
+  [guide, draw].forEach(c => { c.width = size; c.height = size; });
+
+  // the guide: pale letter with a dashed outline, like tracing paper
+  const g = guide.getContext('2d');
+  g.font = `700 ${Math.round(size * 0.72)}px Fredoka, 'Comic Sans MS', sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const cy = size / 2 + size * 0.02;
+  g.fillStyle = 'rgba(60,60,80,.16)';
+  g.fillText(q.target, size / 2, cy);
+  g.strokeStyle = 'rgba(60,60,80,.4)';
+  g.setLineDash([3, 9]);
+  g.lineWidth = 2;
+  g.strokeText(q.target, size / 2, cy);
+
+  const d = draw.getContext('2d');
+  d.lineCap = 'round'; d.lineJoin = 'round';
+  d.lineWidth = 26;
+  d.strokeStyle = (getComputedStyle(document.documentElement).getPropertyValue('--theme') || '').trim() || '#5f27cd';
+
+  let drawing = false, last = null, strokes = 0;
+  const pos = e => {
+    const r = draw.getBoundingClientRect();
+    return [(e.clientX - r.left) * (size / r.width), (e.clientY - r.top) * (size / r.height)];
+  };
+  draw.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    drawing = true; last = pos(e); strokes++;
+    try { draw.setPointerCapture(e.pointerId); } catch { /* older browsers */ }
+  });
+  draw.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    d.beginPath(); d.moveTo(last[0], last[1]); d.lineTo(p[0], p[1]); d.stroke();
+    last = p;
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => draw.addEventListener(ev, () => { drawing = false; }));
+
+  host.querySelector('#traceClear').onclick = () => d.clearRect(0, 0, size, size);
+
+  let attempts = 0, finished = false;
+  host.querySelector('#traceDone').onclick = () => {
+    if (finished) return;
+    // coverage: what fraction of the guide letter has drawing near it?
+    const gi = g.getImageData(0, 0, size, size).data;
+    const di = d.getImageData(0, 0, size, size).data;
+    const step = 5, R = 16;
+    let total = 0, covered = 0;
+    for (let y = 0; y < size; y += step) {
+      for (let x = 0; x < size; x += step) {
+        if (gi[(y * size + x) * 4 + 3] < 40) continue;
+        total++;
+        let hit = false;
+        outer: for (let dy = -R; dy <= R && !hit; dy += 4) {
+          for (let dx = -R; dx <= R; dx += 4) {
+            const yy = y + dy, xx = x + dx;
+            if (xx < 0 || yy < 0 || xx >= size || yy >= size) continue;
+            if (di[(yy * size + xx) * 4 + 3] > 60) { hit = true; break; }
+          }
+        }
+        if (hit) covered++;
+      }
+    }
+    const ratio = total ? covered / total : 0;
+    if (ratio >= 0.55) {
+      finished = true;
+      onDone(true);
+    } else {
+      attempts++;
+      speak(strokes === 0 ? 'Trace over the dotted lines with your finger!' : 'Nearly there! Follow the dotted lines a little more.');
+      if (attempts >= 3) { finished = true; onDone(false); }
+    }
+  };
+}
+
+const RENDER = { choice: renderChoice, match: renderMatch, hunt: renderHunt, build: renderBuild, piano: renderPiano, trace: renderTrace };
 
 // ---------- session runner ----------
 const PRAISE = ['Well done!', 'Amazing!', 'Super star!', 'Brilliant!', 'You did it!'];
@@ -1350,7 +1698,7 @@ let session = null;
 
 export function startSession(skillId, rounds = 5) {
   if (!activeProfile()) { nav('profiles'); return; } // must know who is learning
-  session = { skillId, round: 0, rounds, stars: 0, methods: {} };
+  session = { skillId, round: 0, rounds, stars: 0, methods: {}, pendingCert: null };
   renderRound();
 }
 
@@ -1380,6 +1728,11 @@ function renderRound() {
 function done(correct) {
   const { method, level } = session.current;
   const change = recordResult(session.skillId, method, correct, skillMax(null, session.skillId));
+  // first time reaching a new level => certificate (shown after the session)
+  if (change === 'up') {
+    const cert = awardCertificate(session.skillId, level + 1);
+    if (cert) session.pendingCert = cert;
+  }
   const rec = (session.methods[method] ||= { a: 0, c: 0 });
   rec.a++;
   if (correct) { rec.c++; session.stars++; }
@@ -1403,10 +1756,44 @@ function showFeedback(correct, change, cb) {
   setTimeout(() => { o.remove(); cb(); }, change === 'up' ? 2100 : 1400);
 }
 
+// Milestone certificate: full-screen, screenshot-friendly, then back to the summary.
+function renderCertificate(cert, cb) {
+  const app = document.getElementById('app');
+  const prof = activeProfile();
+  const skill = SKILLS[cert.skill];
+  const name = prof?.name || 'Superstar';
+  const date = new Date(cert.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  app.innerHTML = `
+    <div class="certificate">
+      <div class="cert-stars">🌟 🌟 🌟</div>
+      <div class="cert-heading">🏅 Certificate 🏅</div>
+      <div class="cert-avatar">${prof?.avatar || '🌟'}</div>
+      <div class="cert-name">${escH(name)}</div>
+      <div class="cert-text">has reached</div>
+      <div class="cert-award">Level ${cert.level} · ${skill.levelNames[cert.level - 1]}</div>
+      <div class="cert-text">in ${skill.icon} ${skill.name}</div>
+      <div class="cert-date">${date}</div>
+      <div class="btn-row"><button class="btn" id="certOk">🎉 Hooray!</button></div>
+    </div>`;
+  confetti();
+  speak(`Amazing! ${name} has reached level ${cert.level} in ${skill.name}! Here is your certificate!`);
+  document.getElementById('certOk').onclick = cb;
+}
+
 function renderSummary() {
+  // A freshly earned certificate takes the stage first, then the normal summary.
+  if (session.pendingCert) {
+    const cert = session.pendingCert;
+    session.pendingCert = null;
+    renderCertificate(cert, renderSummary);
+    return;
+  }
   const app = document.getElementById('app');
   const skill = SKILLS[session.skillId];
   const { stars, rounds } = session;
+  // Sticker album: perfect score = rare sticker, 3+/5 = common sticker.
+  const sticker = stars === rounds ? awardSticker(true)
+    : stars >= Math.ceil(rounds * 0.6) ? awardSticker(false) : null;
   const msg = stars === rounds ? 'Perfect! You are a superstar! 🌟'
     : stars >= rounds / 2 ? 'Great work! Keep it up! 💪'
     : 'Good try! Practice makes perfect! 🌱';
@@ -1418,6 +1805,12 @@ function renderSummary() {
     <div class="summary-card">
       <div class="summary-stars">${'⭐'.repeat(stars)}${'☆'.repeat(rounds - stars)}</div>
       <div class="summary-msg">${msg}</div>
+      ${sticker ? `
+        <button class="sticker-reveal" id="stickerBtn" aria-label="See your sticker album">
+          <span class="sticker-reveal-text">You earned a sticker!</span>
+          <span class="sticker-big">${sticker}</span>
+          <span class="sticker-reveal-sub">tap to see your album 🎁</span>
+        </button>` : ''}
       <div class="btn-row">
         <button class="btn again-big" id="againBtn" aria-label="Play again">
           <span class="big-emoji">🔁</span><span class="btn-label">Play again</span>
@@ -1428,9 +1821,11 @@ function renderSummary() {
       </div>
     </div>`;
   if (stars === rounds) starRain(); else confetti();
-  speak(`${msg} Tap the big orange button to play again, or tap the house to try something else.`);
+  speak(`${msg} ${sticker ? 'You earned a sticker for your album! ' : ''}Tap the big orange button to play again, or tap the house to try something else.`);
   document.getElementById('againBtn').onclick = () => startSession(skillId);
   document.getElementById('homeBtn').onclick = () => nav('home');
+  const stickerBtn = document.getElementById('stickerBtn');
+  if (stickerBtn) stickerBtn.onclick = () => nav('album');
 }
 
 function confetti() {

@@ -1,5 +1,5 @@
 // Screens: profile picker, profile creation, home, parent dashboard.
-import { SKILLS, AGE_BANDS } from './data.js';
+import { SKILLS, AGE_BANDS, STICKERS } from './data.js';
 import {
   state, save, resetAll,
   listProfiles, activeProfile, addProfile, switchProfile, updateProfile, removeProfile,
@@ -82,7 +82,10 @@ export function renderHome() {
           </div>`;
       }).join('')}
     </div>
-    <p class="free-piano-row"><button class="btn secondary" id="freePianoBtn">🎹 Just play the piano</button></p>
+    <p class="free-piano-row">
+      <button class="btn secondary" id="albumBtn">🎁 My Stickers (${(prof.stickers || []).length})</button>
+      <button class="btn secondary" id="freePianoBtn">🎹 Just play the piano</button>
+    </p>
     <p class="parent-link"><button class="parent-gate-link" id="parentBtn">🔒 Grown-ups</button></p>`;
 
   document.querySelectorAll('.skill-card').forEach(card => {
@@ -90,6 +93,7 @@ export function renderHome() {
   });
   document.getElementById('smartBtn').onclick = () => startSession(pickSmartSkill());
   document.getElementById('freePianoBtn').onclick = () => renderPianoFreePlay();
+  document.getElementById('albumBtn').onclick = () => renderAlbum();
   document.getElementById('parentBtn').onclick = () => renderParentGate();
   document.getElementById('switchBtn').onclick = () => nav('profiles');
 }
@@ -103,6 +107,35 @@ function pickSmartSkill() {
     if (aa !== ab) return aa - ab;
     return (skillAccuracy(a) ?? 0.5) - (skillAccuracy(b) ?? 0.5);
   })[0];
+}
+
+// ---------------- sticker album ----------------
+export function renderAlbum() {
+  const prof = activeProfile();
+  if (!prof) { renderProfiles(); return; }
+  applyTheme();
+  const stickers = prof.stickers || [];
+  const counts = {};
+  stickers.forEach(s => { counts[s] = (counts[s] || 0) + 1; });
+  const earned = Object.keys(counts);
+  // uncollected stickers show as faint silhouettes so there's something to aim for
+  const all = [...STICKERS.rare, ...STICKERS.common];
+  const missing = all.filter(s => !counts[s]);
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="topbar"><button class="home-btn" id="homeBtn">🏠</button>
+      <div class="session-title">🎁 ${esc(prof.name || 'My')}'s Stickers</div><span></span></div>
+    <p class="greeting">You have collected <b>${stickers.length}</b> sticker${stickers.length === 1 ? '' : 's'}!
+      ${stickers.length === 0 ? 'Finish a game to earn your first one!' : 'Get 5 stars for a rare one!'}</p>
+    <div class="sticker-grid">
+      ${earned.map(s => `
+        <div class="sticker-cell ${STICKERS.rare.includes(s) ? 'rare' : ''}">${s}
+          ${counts[s] > 1 ? `<span class="sticker-count">×${counts[s]}</span>` : ''}
+        </div>`).join('')}
+      ${missing.map(s => `<div class="sticker-cell empty">${s}</div>`).join('')}
+    </div>`;
+  document.getElementById('homeBtn').onclick = () => nav('home');
 }
 
 // ---------------- profile picker ----------------
@@ -304,6 +337,14 @@ export function renderDashboard() {
         <button class="btn small secondary" id="addProfileBtn">➕ Add child</button>
       </div>
     </div>
+    ${prof ? `
+    <div class="dash-card">
+      <div class="dash-head"><span class="icon">🏅</span><span class="name">Certificates — ${prof.avatar} ${esc(prof.name || 'Unnamed')}</span></div>
+      ${(prof.certificates || []).length ? (prof.certificates || []).slice(-8).reverse().map(c => `
+        <div class="cert-row">${SKILLS[c.skill]?.icon || '⭐'} Level ${c.level} · ${SKILLS[c.skill]?.levelNames[c.level - 1] || ''}
+          <span class="profile-sub">${new Date(c.at).toLocaleDateString('en-GB')}</span>
+        </div>`).join('') : '<p class="dash-note">No certificates yet — one is earned the first time each new level is reached.</p>'}
+    </div>` : ''}
     <div class="dash-card">
       <div class="settings-row">
         <label>Learning method:
