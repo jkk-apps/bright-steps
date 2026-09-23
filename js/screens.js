@@ -1,10 +1,10 @@
 // Screens: profile picker, profile creation, home, parent dashboard.
-import { SKILLS } from './data.js';
+import { SKILLS, AGE_BANDS } from './data.js';
 import {
   state, save, resetAll,
   listProfiles, activeProfile, addProfile, switchProfile, updateProfile, removeProfile,
   overallAccuracy, getLevel, skillAccuracy, skillAnswered, methodRate, bestMethod,
-  isSkillVisible, METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
+  isSkillVisible, profileBand, skillMax, METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
 } from './engine.js';
 import { startSession, renderPianoFreePlay } from './activities.js';
 import { speak, getVoices, setVoicePreference, onVoicesChanged, isHighQuality } from './speech.js';
@@ -71,7 +71,7 @@ export function renderHome() {
     <button class="btn smart-btn" id="smartBtn">✨ Smart Session</button>
     <div class="skill-grid">
       ${Object.values(SKILLS).filter(sk => isSkillVisible(prof, sk.id)).map(sk => {
-        const lvl = getLevel(sk.id, sk.maxLevel);
+        const lvl = getLevel(sk.id, skillMax(prof, sk.id));
         const acc = skillAccuracy(sk.id);
         return `
           <div class="skill-card" style="--c:${sk.colour}" data-id="${sk.id}">
@@ -144,6 +144,7 @@ export function renderProfiles() {
 function renderProfileForm() {
   const app = document.getElementById('app');
   let selected = AVATARS[0];
+  let band = '4-7';
   applyTheme(themeFor(selected));
 
   app.innerHTML = `
@@ -153,6 +154,13 @@ function renderProfileForm() {
       <p style="font-size:1.3rem;margin-top:4px">Pick an avatar:</p>
       <div class="avatar-row" id="avatarRow">
         ${AVATARS.map((a, i) => `<button class="avatar-btn ${i === 0 ? 'selected' : ''}" data-a="${a}">${a}</button>`).join('')}
+      </div>
+      <p style="font-size:1.3rem;margin-bottom:2px">How old are they?</p>
+      <div class="band-row" id="bandRow">
+        ${Object.entries(AGE_BANDS).map(([id, b]) => `
+          <button class="band-btn ${id === band ? 'selected' : ''}" data-band="${id}">
+            ${b.icon} ${b.label}<small>${b.blurb}</small>
+          </button>`).join('')}
       </div>
       <input class="name-input" id="newName" placeholder="Child's name" style="text-align:center;font-size:1.4rem" maxlength="20">
       <div class="btn-row"><button class="btn" id="saveBtn">Start! 🚀</button></div>
@@ -166,9 +174,16 @@ function renderProfileForm() {
       applyTheme(themeFor(selected)); // live preview: app re-colours as they pick
     };
   });
+  document.querySelectorAll('#bandRow .band-btn').forEach(btn => {
+    btn.onclick = () => {
+      band = btn.dataset.band;
+      document.querySelectorAll('#bandRow .band-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
   const saveProfile = () => {
     const name = document.getElementById('newName').value;
-    addProfile(name, selected);
+    addProfile(name, selected, band);
     renderHome();
   };
   document.getElementById('saveBtn').onclick = saveProfile;
@@ -227,7 +242,13 @@ export function renderDashboard() {
         <b>${esc(p.name || 'Unnamed')}</b>
         ${p.id === state.active ? '<span class="chip">current</span>' : ''}
         <span class="profile-sub">${acc == null ? 'no plays yet' : Math.round(acc * 100) + '% overall'}</span>
-        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <label class="profile-sub">Age band
+            <select data-ageband="${p.id}" style="font-size:.9rem;padding:5px 8px">
+              ${Object.entries(AGE_BANDS).map(([id, b]) => `
+                <option value="${id}" ${profileBand(p) === id ? 'selected' : ''}>${b.icon} ${b.label}</option>`).join('')}
+            </select>
+          </label>
           ${p.id !== state.active ? `<button class="mini-btn" data-switch="${p.id}">Switch</button>` : ''}
           <button class="mini-btn" data-rename="${p.id}">Rename</button>
           <button class="mini-btn" data-avatar="${p.id}">Avatar</button>
@@ -245,7 +266,7 @@ export function renderDashboard() {
   }).join('');
 
   const cards = prof ? Object.values(SKILLS).map(sk => {
-    const lvl = getLevel(sk.id, sk.maxLevel);
+    const lvl = getLevel(sk.id, skillMax(prof, sk.id));
     const acc = skillAccuracy(sk.id);
     const best = bestMethod(sk.id);
     const bars = METHODS.map(m => {
@@ -354,6 +375,9 @@ export function renderDashboard() {
       updateProfile(p.id, { avatar: next });
       renderDashboard();
     };
+  });
+  document.querySelectorAll('[data-ageband]').forEach(selB => {
+    selB.onchange = () => { updateProfile(selB.dataset.ageband, { ageBand: selB.value }); renderDashboard(); };
   });
   document.querySelectorAll('[data-toggle]').forEach(cb => {
     cb.onchange = () => {

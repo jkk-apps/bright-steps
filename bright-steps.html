@@ -314,12 +314,28 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
 .avatar-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; justify-content: center; }
 .avatar-btn { font-size: 2rem; background: #fff; border: 3px solid #eee; border-radius: 14px; padding: 6px 10px; cursor: pointer; font-family: inherit; }
 .avatar-btn.selected { border-color: var(--theme); background: var(--theme-soft); }
+.band-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0 18px; flex-wrap: wrap; }
+.band-btn { font-family: inherit; font-size: 1.15rem; font-weight: bold; padding: 12px 20px; border-radius: 18px; border: 3px solid #eee; background: #fff; color: #555; cursor: pointer; }
+.band-btn small { display: block; font-size: .78rem; font-weight: normal; margin-top: 3px; color: #999; }
+.band-btn.selected { border-color: var(--theme); background: var(--theme-soft); color: var(--theme-dark); }
 .switch-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--theme); text-decoration: underline; font-family: inherit; }
 .mini-btn { font-family: inherit; border: none; cursor: pointer; border-radius: 10px; padding: 6px 12px; background: var(--theme-soft); color: var(--theme); font-size: .9rem; }
 .btn.small { padding: 8px 14px; font-size: 1rem; }
 .profile-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f6; flex-wrap: wrap; }
 .skill-toggle { font-size: .9rem; background: #f4f4f8; border-radius: 999px; padding: 5px 12px; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; font-family: inherit; }
 .skill-toggle input { accent-color: var(--theme); width: 16px; height: 16px; cursor: pointer; }
+
+/* 2D shapes module — CSS-drawn so the shape itself is the lesson, in any colour */
+/* sized via font-size so rectangles/ovals can keep their proportions in em */
+.shape { display: inline-block; font-size: 56px; width: 1em; height: 1em; background: var(--sh-col, #e74c3c); vertical-align: middle; }
+.shape-circle { border-radius: 50%; }
+.shape-square { border-radius: 8%; }
+.shape-triangle { clip-path: polygon(50% 4%, 98% 96%, 2% 96%); }
+.shape-star { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.shape-heart { clip-path: polygon(50% 96%, 6% 62%, 2% 42%, 8% 22%, 24% 8%, 40% 10%, 50% 24%, 60% 10%, 76% 8%, 92% 22%, 98% 42%, 94% 62%); }
+.shape-rectangle { width: 1.5em; }
+.shape-oval { border-radius: 50%; width: 1.4em; }
+.shape-diamond { clip-path: polygon(50% 0, 96% 50%, 50% 100%, 4% 50%); }
 
 @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
@@ -656,12 +672,13 @@ function resetAll() { state = fresh(); save(); }
 function listProfiles() { return Object.values(state.profiles); }
 function activeProfile() { return state.profiles[state.active] || null; }
 
-function addProfile(name, avatar) {
+function addProfile(name, avatar, ageBand) {
   const id = uid();
   state.profiles[id] = {
     id,
     name: (name || '').trim(),
     avatar: avatar || AVATARS[0],
+    ageBand: ageBand === '2-4' ? '2-4' : '4-7',
     stats: {},
     progress: {},
     hiddenSkills: [],   // parent-controlled per-child module visibility
@@ -688,10 +705,23 @@ function removeProfile(id) {
   save();
 }
 
+// A child's age band ('4-7' for profiles created before bands existed).
+function profileBand(profile) {
+  const p = profile || activeProfile();
+  return (p && p.ageBand) || '4-7';
+}
+
+// The highest level this child can reach in a skill (age-band capped).
+function skillMax(profile, skillId) {
+  return bandCap(profileBand(profile), skillId);
+}
+
 // Is a skill shown on this child's home screen? (default: yes)
+// Skills capped to 0 by the child's age band are hidden automatically.
 function isSkillVisible(profile, skillId) {
   const p = profile || activeProfile();
   if (!p) return true;
+  if (bandCap(profileBand(p), skillId) === 0) return false;
   return !(p.hiddenSkills || []).includes(skillId);
 }
 
@@ -811,6 +841,10 @@ const SKILLS = {
     id: 'reasoning', name: 'Reasoning', icon: '🧠', colour: '#ff6b81', maxLevel: 4,
     levelNames: ['patterns', 'odd one out', 'analogies', 'sequences & codes'],
   },
+  shapes: {
+    id: 'shapes', name: 'Shapes', icon: '🔷', colour: '#e17055', maxLevel: 2,
+    levelNames: ['first shapes', 'more shapes'],
+  },
   letters: {
     id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
     levelNames: ['s a t p i n', 'adds m d g o c k', 'adds e u r h f b l', 'all small letters', 'big & small letters', 'all letters review'],
@@ -840,6 +874,40 @@ const SKILLS = {
     levelNames: ['greetings', 'numbers 1-5', 'numbers 6-10', 'colours', 'animals', 'food'],
   },
 };
+
+// ---------------- age bands ----------------
+// Each child profile is either '2-4' (gentler: early levels only, stretch
+// modules hidden) or '4-7' (the full curriculum up to 7+ standard).
+const AGE_BANDS = {
+  '2-4': {
+    label: '2–4+', icon: '🐣', blurb: 'gentler first steps',
+    // Per-skill level cap for this band; 0 = hidden from the home screen.
+    caps: {
+      numbers: 3,   // up to counting to 20 (4+ upper boundary)
+      shapes: 2,    // 2D shape naming — a 4+ school-readiness skill
+      maths: 2,     // up to adding to 10
+      letters: 4,   // up to all small letters
+      words: 1,     // satpin words only
+      colours: 3,   // up to 11 colours (no colour-word reading)
+      reading: 2,   // wordless + Pink band
+      piano: 2,     // C to G
+      spanish: 2,   // greetings + numbers 1-5
+      french: 2,    // greetings + numbers 1-5
+      fractions: 0, // hidden
+      reasoning: 2, // patterns + odd one out (no analogies/codes)
+    },
+  },
+  '4-7': { label: '4–7+', icon: '🦁', blurb: 'full curriculum to 7+', caps: null },
+};
+
+// Highest level this age band allows for a skill (0 = hidden for this band).
+function bandCap(band, skillId) {
+  const b = AGE_BANDS[band] || AGE_BANDS['4-7'];
+  const full = SKILLS[skillId].maxLevel;
+  if (!b.caps) return full;
+  const c = b.caps[skillId];
+  return c == null ? full : Math.min(c, full);
+}
 
 // ---------------- piano ----------------
 // Official Boomwhackers / Chroma-Notes colours — the de-facto standard in UK
@@ -1045,6 +1113,25 @@ const COLOUR_LEVELS = {
 
 // General emoji pool for picture games
 const EMOJI_POOL = ['🐶', '🐱', '🐭', '🐰', '🦆', '🐸', '🐝', '🦋', '🌳', '🌸', '⚽', '🎈', '🍎', '🚗', '🐠', '🍪'];
+
+// ---------------- 2D shapes (4+ school readiness) ----------------
+// Drawn with CSS (not emoji) so children learn the shape itself, not a picture —
+// and each appearance uses a random colour/size to teach shape constancy.
+const SHAPE_META = {
+  circle:    { n: 'circle',    pl: 'circles',    things: ['⚽', '🍩', '🌝'] },
+  square:    { n: 'square',    pl: 'squares',    things: ['🎁', '🪟', '🧊'] },
+  triangle:  { n: 'triangle',  pl: 'triangles',  things: ['🍕', '⛺', '🎄'] },
+  star:      { n: 'star',      pl: 'stars',      things: ['🌟', '⭐', '✨'] },
+  heart:     { n: 'heart',     pl: 'hearts',     things: ['💝', '❤️', '💗'] },
+  rectangle: { n: 'rectangle', pl: 'rectangles', things: ['📱', '🚪', '📦'] },
+  oval:      { n: 'oval',      pl: 'ovals',      things: ['🥚', '🍈', '🪞'] },
+  diamond:   { n: 'diamond',   pl: 'diamonds',   things: ['💎', '🔶', '🪁'] },
+};
+const SHAPE_LEVELS = {
+  1: ['circle', 'square', 'triangle', 'star', 'heart'],
+  2: ['circle', 'square', 'triangle', 'star', 'heart', 'rectangle', 'oval', 'diamond'],
+};
+const SHAPE_COLOURS = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#ff8fb2'];
 
 // Reading material mapped to UK book bands.
 // Lilac = wordless picture talk; Pink = Phase 2 captions; Red = Phase 3;
@@ -1296,8 +1383,51 @@ function numberPool(level) {
   return out;
 }
 
+// 4+ readiness: "one more / one less" — show the base amount, ask for the neighbour.
+function genOneMoreLess(level, method, pool) {
+  const more = Math.random() < 0.5;
+  const candidates = pool.filter(n => more ? n + 1 <= 20 : n - 1 >= 0);
+  const base = pick(candidates.length ? candidates : [1]);
+  const ans = more ? base + 1 : base - 1;
+  const speak = more ? `What is one more than ${base}?` : `What is one less than ${base}?`;
+  const prompt = method === 'look'
+    ? {
+        html: `<div class="emoji-row">${blocksFor(base, true)}</div>`,
+        text: more ? 'One more! How many now?' : 'One less! How many now?',
+        speak: `Here are ${base}. ${speak}`,
+      }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak };
+  return { type: 'choice', prompt, options: answerOptions(ans), answer: ans };
+}
+
+// 4+ readiness: number ordering — "what comes next" / "which number is missing".
+function genNumberOrder(level, method) {
+  const lo = level === 1 ? 1 : level === 2 ? 0 : 5;
+  const hi = level === 1 ? 5 : level === 2 ? 9 : 20;
+  const missingMid = Math.random() < 0.5;
+  const start = rand(lo, hi - (missingMid ? 2 : 3));
+  const ans = missingMid ? start + 1 : start + 3;
+  const strip = missingMid ? [start, '?', start + 2] : [start, start + 1, start + 2, '?'];
+  const spoken = missingMid ? `${start}, something, ${start + 2}. Which number is missing?`
+                            : `${start}, ${start + 1}, ${start + 2}. What comes next?`;
+  const prompt = method === 'look'
+    ? {
+        html: `<div class="big-letter" style="font-size:2.4rem">${strip.join(' , ')}</div>`,
+        text: missingMid ? 'Which number is missing?' : 'What comes next?',
+        speak: spoken,
+      }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak: spoken };
+  return { type: 'choice', prompt, options: answerOptions(ans), answer: ans };
+}
+
 function genNumbers(level, method) {
   const pool = numberPool(level);
+  // Early levels mix in 4+ school-readiness skills: one more/less and ordering.
+  if (level <= 3 && (method === 'look' || method === 'hear')) {
+    const roll = Math.random();
+    if (roll < 0.3) return genOneMoreLess(level, method, pool);
+    if (roll < 0.55) return genNumberOrder(level, method);
+  }
   const target = pick(pool);
 
   if (method === 'look') {
@@ -2132,9 +2262,53 @@ function genPiano(level, method) {
   };
 }
 
+// ---------- 2D shapes (4+ school readiness) ----------
+// CSS-drawn shape in a random colour (and slight size jitter) so children learn
+// the shape itself, not one picture of it.
+function shapeHtml(key, px = 56) {
+  const col = pick(SHAPE_COLOURS);
+  return `<span class="shape shape-${key}" style="--sh-col:${col};font-size:${px}px"></span>`;
+}
+
+function genShapes(level, method) {
+  const pool = SHAPE_LEVELS[level];
+  const target = pick(pool);
+  const others = pool.filter(s => s !== target);
+  const opts = shuffle([target, ...sample(others, Math.min(3, others.length))]);
+
+  if (method === 'match') {
+    // match each shape to a real-world thing that looks like it
+    const three = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each shape to something shaped like it!', speak: 'Match the shapes to the things that look like them.' },
+      pairs: three.map(k => ({ left: { html: shapeHtml(k, 44) }, right: { html: pick(SHAPE_META[k].things) } })),
+    };
+  }
+  if (method === 'play') {
+    // hunt every shape of the target kind (all in different colours)
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: shapeHtml(target, 46), match: true })),
+      ...sample(others, Math.min(6, others.length)).map(k => ({ html: shapeHtml(k, 46), match: false })),
+    ]);
+    return {
+      type: 'hunt',
+      prompt: { speak: `Tap every ${SHAPE_META[target].n}.`, text: `Tap all the ${SHAPE_META[target].pl}!` },
+      tiles,
+    };
+  }
+  const options = opts.map(k => ({ html: shapeHtml(k, 60), value: k }));
+  const prompt = method === 'look'
+    // shape constancy: shown one, find the same shape whatever its colour
+    ? { html: shapeHtml(target, 90), text: 'Tap the matching shape!', speak: `Here is a ${SHAPE_META[target].n}. Tap the ${SHAPE_META[target].n}.` }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the shape!', speak: `Tap the ${SHAPE_META[target].n}.` };
+  return { type: 'choice', prompt, options, answer: target };
+}
+
 function generateRound(skillId, level, method) {
   switch (skillId) {
     case 'numbers':   return genNumbers(level, method);
+    case 'shapes':    return genShapes(level, method);
     case 'maths':     return genMaths(level, method);
     case 'fractions': return genFractions(level, method);
     case 'reasoning': return genReasoning(level, method);
@@ -2463,7 +2637,7 @@ function startSession(skillId, rounds = 5) {
 function renderRound() {
   const app = document.getElementById('app');
   const skill = SKILLS[session.skillId];
-  const level = getLevel(session.skillId, skill.maxLevel);
+  const level = getLevel(session.skillId, skillMax(null, session.skillId)); // age-band capped
   // language skills unlock harder methods as the child levels up
   const gates = (session.skillId === 'spanish' || session.skillId === 'french') ? LANG_METHOD_GATES[level] : undefined;
   const method = pickMethod(session.skillId, gates);
@@ -2485,7 +2659,7 @@ function renderRound() {
 
 function done(correct) {
   const { method, level } = session.current;
-  const change = recordResult(session.skillId, method, correct, SKILLS[session.skillId].maxLevel);
+  const change = recordResult(session.skillId, method, correct, skillMax(null, session.skillId));
   const rec = (session.methods[method] ||= { a: 0, c: 0 });
   rec.a++;
   if (correct) { rec.c++; session.stars++; }
@@ -2633,7 +2807,7 @@ function renderHome() {
     <button class="btn smart-btn" id="smartBtn">✨ Smart Session</button>
     <div class="skill-grid">
       ${Object.values(SKILLS).filter(sk => isSkillVisible(prof, sk.id)).map(sk => {
-        const lvl = getLevel(sk.id, sk.maxLevel);
+        const lvl = getLevel(sk.id, skillMax(prof, sk.id));
         const acc = skillAccuracy(sk.id);
         return `
           <div class="skill-card" style="--c:${sk.colour}" data-id="${sk.id}">
@@ -2706,6 +2880,7 @@ function renderProfiles() {
 function renderProfileForm() {
   const app = document.getElementById('app');
   let selected = AVATARS[0];
+  let band = '4-7';
   applyTheme(themeFor(selected));
 
   app.innerHTML = `
@@ -2715,6 +2890,13 @@ function renderProfileForm() {
       <p style="font-size:1.3rem;margin-top:4px">Pick an avatar:</p>
       <div class="avatar-row" id="avatarRow">
         ${AVATARS.map((a, i) => `<button class="avatar-btn ${i === 0 ? 'selected' : ''}" data-a="${a}">${a}</button>`).join('')}
+      </div>
+      <p style="font-size:1.3rem;margin-bottom:2px">How old are they?</p>
+      <div class="band-row" id="bandRow">
+        ${Object.entries(AGE_BANDS).map(([id, b]) => `
+          <button class="band-btn ${id === band ? 'selected' : ''}" data-band="${id}">
+            ${b.icon} ${b.label}<small>${b.blurb}</small>
+          </button>`).join('')}
       </div>
       <input class="name-input" id="newName" placeholder="Child's name" style="text-align:center;font-size:1.4rem" maxlength="20">
       <div class="btn-row"><button class="btn" id="saveBtn">Start! 🚀</button></div>
@@ -2728,9 +2910,16 @@ function renderProfileForm() {
       applyTheme(themeFor(selected)); // live preview: app re-colours as they pick
     };
   });
+  document.querySelectorAll('#bandRow .band-btn').forEach(btn => {
+    btn.onclick = () => {
+      band = btn.dataset.band;
+      document.querySelectorAll('#bandRow .band-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+  });
   const saveProfile = () => {
     const name = document.getElementById('newName').value;
-    addProfile(name, selected);
+    addProfile(name, selected, band);
     renderHome();
   };
   document.getElementById('saveBtn').onclick = saveProfile;
@@ -2789,7 +2978,13 @@ function renderDashboard() {
         <b>${esc(p.name || 'Unnamed')}</b>
         ${p.id === state.active ? '<span class="chip">current</span>' : ''}
         <span class="profile-sub">${acc == null ? 'no plays yet' : Math.round(acc * 100) + '% overall'}</span>
-        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <label class="profile-sub">Age band
+            <select data-ageband="${p.id}" style="font-size:.9rem;padding:5px 8px">
+              ${Object.entries(AGE_BANDS).map(([id, b]) => `
+                <option value="${id}" ${profileBand(p) === id ? 'selected' : ''}>${b.icon} ${b.label}</option>`).join('')}
+            </select>
+          </label>
           ${p.id !== state.active ? `<button class="mini-btn" data-switch="${p.id}">Switch</button>` : ''}
           <button class="mini-btn" data-rename="${p.id}">Rename</button>
           <button class="mini-btn" data-avatar="${p.id}">Avatar</button>
@@ -2807,7 +3002,7 @@ function renderDashboard() {
   }).join('');
 
   const cards = prof ? Object.values(SKILLS).map(sk => {
-    const lvl = getLevel(sk.id, sk.maxLevel);
+    const lvl = getLevel(sk.id, skillMax(prof, sk.id));
     const acc = skillAccuracy(sk.id);
     const best = bestMethod(sk.id);
     const bars = METHODS.map(m => {
@@ -2916,6 +3111,9 @@ function renderDashboard() {
       updateProfile(p.id, { avatar: next });
       renderDashboard();
     };
+  });
+  document.querySelectorAll('[data-ageband]').forEach(selB => {
+    selB.onchange = () => { updateProfile(selB.dataset.ageband, { ageBand: selB.value }); renderDashboard(); };
   });
   document.querySelectorAll('[data-toggle]').forEach(cb => {
     cb.onchange = () => {

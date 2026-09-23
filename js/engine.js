@@ -2,6 +2,8 @@
 // progress. Tracks success per skill per learning method, chooses methods
 // weighted by success (with exploration), and moves levels up/down.
 
+import { bandCap } from './data.js';
+
 export const METHODS = ['look', 'hear', 'match', 'play'];
 export const METHOD_META = {
   look:  { name: 'Look & Find',   icon: '👀', blurb: 'Seeing and choosing' },
@@ -86,12 +88,13 @@ export function resetAll() { state = fresh(); save(); }
 export function listProfiles() { return Object.values(state.profiles); }
 export function activeProfile() { return state.profiles[state.active] || null; }
 
-export function addProfile(name, avatar) {
+export function addProfile(name, avatar, ageBand) {
   const id = uid();
   state.profiles[id] = {
     id,
     name: (name || '').trim(),
     avatar: avatar || AVATARS[0],
+    ageBand: ageBand === '2-4' ? '2-4' : '4-7',
     stats: {},
     progress: {},
     hiddenSkills: [],   // parent-controlled per-child module visibility
@@ -118,10 +121,23 @@ export function removeProfile(id) {
   save();
 }
 
+// A child's age band ('4-7' for profiles created before bands existed).
+export function profileBand(profile) {
+  const p = profile || activeProfile();
+  return (p && p.ageBand) || '4-7';
+}
+
+// The highest level this child can reach in a skill (age-band capped).
+export function skillMax(profile, skillId) {
+  return bandCap(profileBand(profile), skillId);
+}
+
 // Is a skill shown on this child's home screen? (default: yes)
+// Skills capped to 0 by the child's age band are hidden automatically.
 export function isSkillVisible(profile, skillId) {
   const p = profile || activeProfile();
   if (!p) return true;
+  if (bandCap(profileBand(p), skillId) === 0) return false;
   return !(p.hiddenSkills || []).includes(skillId);
 }
 

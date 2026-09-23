@@ -25,6 +25,10 @@ export const SKILLS = {
     id: 'reasoning', name: 'Reasoning', icon: '🧠', colour: '#ff6b81', maxLevel: 4,
     levelNames: ['patterns', 'odd one out', 'analogies', 'sequences & codes'],
   },
+  shapes: {
+    id: 'shapes', name: 'Shapes', icon: '🔷', colour: '#e17055', maxLevel: 2,
+    levelNames: ['first shapes', 'more shapes'],
+  },
   letters: {
     id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
     levelNames: ['s a t p i n', 'adds m d g o c k', 'adds e u r h f b l', 'all small letters', 'big & small letters', 'all letters review'],
@@ -54,6 +58,40 @@ export const SKILLS = {
     levelNames: ['greetings', 'numbers 1-5', 'numbers 6-10', 'colours', 'animals', 'food'],
   },
 };
+
+// ---------------- age bands ----------------
+// Each child profile is either '2-4' (gentler: early levels only, stretch
+// modules hidden) or '4-7' (the full curriculum up to 7+ standard).
+export const AGE_BANDS = {
+  '2-4': {
+    label: '2–4+', icon: '🐣', blurb: 'gentler first steps',
+    // Per-skill level cap for this band; 0 = hidden from the home screen.
+    caps: {
+      numbers: 3,   // up to counting to 20 (4+ upper boundary)
+      shapes: 2,    // 2D shape naming — a 4+ school-readiness skill
+      maths: 2,     // up to adding to 10
+      letters: 4,   // up to all small letters
+      words: 1,     // satpin words only
+      colours: 3,   // up to 11 colours (no colour-word reading)
+      reading: 2,   // wordless + Pink band
+      piano: 2,     // C to G
+      spanish: 2,   // greetings + numbers 1-5
+      french: 2,    // greetings + numbers 1-5
+      fractions: 0, // hidden
+      reasoning: 2, // patterns + odd one out (no analogies/codes)
+    },
+  },
+  '4-7': { label: '4–7+', icon: '🦁', blurb: 'full curriculum to 7+', caps: null },
+};
+
+// Highest level this age band allows for a skill (0 = hidden for this band).
+export function bandCap(band, skillId) {
+  const b = AGE_BANDS[band] || AGE_BANDS['4-7'];
+  const full = SKILLS[skillId].maxLevel;
+  if (!b.caps) return full;
+  const c = b.caps[skillId];
+  return c == null ? full : Math.min(c, full);
+}
 
 // ---------------- piano ----------------
 // Official Boomwhackers / Chroma-Notes colours — the de-facto standard in UK
@@ -259,6 +297,25 @@ export const COLOUR_LEVELS = {
 
 // General emoji pool for picture games
 export const EMOJI_POOL = ['🐶', '🐱', '🐭', '🐰', '🦆', '🐸', '🐝', '🦋', '🌳', '🌸', '⚽', '🎈', '🍎', '🚗', '🐠', '🍪'];
+
+// ---------------- 2D shapes (4+ school readiness) ----------------
+// Drawn with CSS (not emoji) so children learn the shape itself, not a picture —
+// and each appearance uses a random colour/size to teach shape constancy.
+export const SHAPE_META = {
+  circle:    { n: 'circle',    pl: 'circles',    things: ['⚽', '🍩', '🌝'] },
+  square:    { n: 'square',    pl: 'squares',    things: ['🎁', '🪟', '🧊'] },
+  triangle:  { n: 'triangle',  pl: 'triangles',  things: ['🍕', '⛺', '🎄'] },
+  star:      { n: 'star',      pl: 'stars',      things: ['🌟', '⭐', '✨'] },
+  heart:     { n: 'heart',     pl: 'hearts',     things: ['💝', '❤️', '💗'] },
+  rectangle: { n: 'rectangle', pl: 'rectangles', things: ['📱', '🚪', '📦'] },
+  oval:      { n: 'oval',      pl: 'ovals',      things: ['🥚', '🍈', '🪞'] },
+  diamond:   { n: 'diamond',   pl: 'diamonds',   things: ['💎', '🔶', '🪁'] },
+};
+export const SHAPE_LEVELS = {
+  1: ['circle', 'square', 'triangle', 'star', 'heart'],
+  2: ['circle', 'square', 'triangle', 'star', 'heart', 'rectangle', 'oval', 'diamond'],
+};
+export const SHAPE_COLOURS = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#ff8fb2'];
 
 // Reading material mapped to UK book bands.
 // Lilac = wordless picture talk; Pink = Phase 2 captions; Red = Phase 3;

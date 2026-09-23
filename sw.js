@@ -1,5 +1,5 @@
 // Bright Steps service worker — full offline support (cache-first).
-const CACHE = 'bright-steps-v9'; // bump this on every update so devices pick up the new version
+const CACHE = 'bright-steps-v11'; // bump this on every update so devices pick up the new version
 const ASSETS = [
   './',
   './index.html',

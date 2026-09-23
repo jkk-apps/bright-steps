@@ -15,8 +15,9 @@ import {
   NOTE_COLOURS, NOTE_TEXT, PIANO_OCTAVES, PIANO_LEVEL_NOTES, LANG_CONTENT, LANG_METHOD_GATES,
   FRACTION_META, FRACTION_LEVELS, FRACTION_EQUIV,
   REASON_SHAPES, ODD_ONE_OUT, GO_TOGETHER, ANALOGIES,
+  SHAPE_META, SHAPE_LEVELS, SHAPE_COLOURS,
 } from './data.js';
-import { METHOD_META, recordResult, pickMethod, getLevel, activeProfile } from './engine.js';
+import { METHOD_META, recordResult, pickMethod, getLevel, activeProfile, skillMax } from './engine.js';
 import { speak, speakSeq, stopSpeak, speechAvailable } from './speech.js';
 import { playNote, playNotes, audioReady } from './audio.js';
 
@@ -102,8 +103,51 @@ function numberPool(level) {
   return out;
 }
 
+// 4+ readiness: "one more / one less" — show the base amount, ask for the neighbour.
+function genOneMoreLess(level, method, pool) {
+  const more = Math.random() < 0.5;
+  const candidates = pool.filter(n => more ? n + 1 <= 20 : n - 1 >= 0);
+  const base = pick(candidates.length ? candidates : [1]);
+  const ans = more ? base + 1 : base - 1;
+  const speak = more ? `What is one more than ${base}?` : `What is one less than ${base}?`;
+  const prompt = method === 'look'
+    ? {
+        html: `<div class="emoji-row">${blocksFor(base, true)}</div>`,
+        text: more ? 'One more! How many now?' : 'One less! How many now?',
+        speak: `Here are ${base}. ${speak}`,
+      }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak };
+  return { type: 'choice', prompt, options: answerOptions(ans), answer: ans };
+}
+
+// 4+ readiness: number ordering — "what comes next" / "which number is missing".
+function genNumberOrder(level, method) {
+  const lo = level === 1 ? 1 : level === 2 ? 0 : 5;
+  const hi = level === 1 ? 5 : level === 2 ? 9 : 20;
+  const missingMid = Math.random() < 0.5;
+  const start = rand(lo, hi - (missingMid ? 2 : 3));
+  const ans = missingMid ? start + 1 : start + 3;
+  const strip = missingMid ? [start, '?', start + 2] : [start, start + 1, start + 2, '?'];
+  const spoken = missingMid ? `${start}, something, ${start + 2}. Which number is missing?`
+                            : `${start}, ${start + 1}, ${start + 2}. What comes next?`;
+  const prompt = method === 'look'
+    ? {
+        html: `<div class="big-letter" style="font-size:2.4rem">${strip.join(' , ')}</div>`,
+        text: missingMid ? 'Which number is missing?' : 'What comes next?',
+        speak: spoken,
+      }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the answer!', speak: spoken };
+  return { type: 'choice', prompt, options: answerOptions(ans), answer: ans };
+}
+
 function genNumbers(level, method) {
   const pool = numberPool(level);
+  // Early levels mix in 4+ school-readiness skills: one more/less and ordering.
+  if (level <= 3 && (method === 'look' || method === 'hear')) {
+    const roll = Math.random();
+    if (roll < 0.3) return genOneMoreLess(level, method, pool);
+    if (roll < 0.55) return genNumberOrder(level, method);
+  }
   const target = pick(pool);
 
   if (method === 'look') {
@@ -938,9 +982,53 @@ function genPiano(level, method) {
   };
 }
 
+// ---------- 2D shapes (4+ school readiness) ----------
+// CSS-drawn shape in a random colour (and slight size jitter) so children learn
+// the shape itself, not one picture of it.
+function shapeHtml(key, px = 56) {
+  const col = pick(SHAPE_COLOURS);
+  return `<span class="shape shape-${key}" style="--sh-col:${col};font-size:${px}px"></span>`;
+}
+
+function genShapes(level, method) {
+  const pool = SHAPE_LEVELS[level];
+  const target = pick(pool);
+  const others = pool.filter(s => s !== target);
+  const opts = shuffle([target, ...sample(others, Math.min(3, others.length))]);
+
+  if (method === 'match') {
+    // match each shape to a real-world thing that looks like it
+    const three = sample(pool, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each shape to something shaped like it!', speak: 'Match the shapes to the things that look like them.' },
+      pairs: three.map(k => ({ left: { html: shapeHtml(k, 44) }, right: { html: pick(SHAPE_META[k].things) } })),
+    };
+  }
+  if (method === 'play') {
+    // hunt every shape of the target kind (all in different colours)
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: shapeHtml(target, 46), match: true })),
+      ...sample(others, Math.min(6, others.length)).map(k => ({ html: shapeHtml(k, 46), match: false })),
+    ]);
+    return {
+      type: 'hunt',
+      prompt: { speak: `Tap every ${SHAPE_META[target].n}.`, text: `Tap all the ${SHAPE_META[target].pl}!` },
+      tiles,
+    };
+  }
+  const options = opts.map(k => ({ html: shapeHtml(k, 60), value: k }));
+  const prompt = method === 'look'
+    // shape constancy: shown one, find the same shape whatever its colour
+    ? { html: shapeHtml(target, 90), text: 'Tap the matching shape!', speak: `Here is a ${SHAPE_META[target].n}. Tap the ${SHAPE_META[target].n}.` }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the shape!', speak: `Tap the ${SHAPE_META[target].n}.` };
+  return { type: 'choice', prompt, options, answer: target };
+}
+
 export function generateRound(skillId, level, method) {
   switch (skillId) {
     case 'numbers':   return genNumbers(level, method);
+    case 'shapes':    return genShapes(level, method);
     case 'maths':     return genMaths(level, method);
     case 'fractions': return genFractions(level, method);
     case 'reasoning': return genReasoning(level, method);
@@ -1269,7 +1357,7 @@ export function startSession(skillId, rounds = 5) {
 function renderRound() {
   const app = document.getElementById('app');
   const skill = SKILLS[session.skillId];
-  const level = getLevel(session.skillId, skill.maxLevel);
+  const level = getLevel(session.skillId, skillMax(null, session.skillId)); // age-band capped
   // language skills unlock harder methods as the child levels up
   const gates = (session.skillId === 'spanish' || session.skillId === 'french') ? LANG_METHOD_GATES[level] : undefined;
   const method = pickMethod(session.skillId, gates);
@@ -1291,7 +1379,7 @@ function renderRound() {
 
 function done(correct) {
   const { method, level } = session.current;
-  const change = recordResult(session.skillId, method, correct, SKILLS[session.skillId].maxLevel);
+  const change = recordResult(session.skillId, method, correct, skillMax(null, session.skillId));
   const rec = (session.methods[method] ||= { a: 0, c: 0 });
   rec.a++;
   if (correct) { rec.c++; session.stars++; }

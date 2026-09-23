@@ -36,7 +36,7 @@ standalone display, offline caching via `sw.js`):
 
 | Skill | Levels | UK alignment |
 |---|---|---|
-| 🔢 Number recognition | 1–5 → 0–9 → 10–20 → tens → 0–100 → hundreds to 1,000 | EYFS / Year 1 → Year 3 |
+| 🔢 Number recognition | 1–5 → 0–9 → 10–20 (with one more/one less & ordering at early levels) → tens → 0–100 → hundreds to 1,000 | EYFS / Year 1 → Year 3 |
 | ➕ Maths | + to 5 → + to 10 → − to 10 → ± to 20 → ×2,5,10 → ÷2,5,10 → missing numbers → ± to 100 → ± to 1,000 → ×3,4,6 → ×7–12 → ÷ any table → mixed review → money problems → measure & two-step problems | KS1 → 7+ stretch (Y3/Y4) |
 | 🔤 Letter recognition | s a t p i n → cumulative Phase 2 sets → full alphabet → case matching | Phonics Phase 2 |
 | 📖 SATPIN words | satpin-only CVC → Phase 2 CVC → Phase 3 digraphs → Phase 4 blends | Phonics Phases 2–4 |
@@ -44,6 +44,7 @@ standalone display, offline caching via `sw.js`):
 | 📚 Reading | Lilac (wordless) → Pink → Red → Yellow → Blue → Green → Orange → Turquoise → Purple (upper bands add inference & vocabulary questions) | UK book bands → 7+ comprehension |
 | 🍕 Fractions | halves & quarters → thirds → equivalent fractions (1/2 = 2/4 = 3/6…) | Year 2 → 7+ |
 | 🧠 Reasoning | shape patterns → odd one out → picture analogies → number/letter sequences & codes | 7+ verbal & non-verbal |
+| 🔷 Shapes | circle, square, triangle, star, heart → + rectangle, oval, diamond (shape constancy across colours/sizes, real-world matching) | 4+ school readiness / EYFS |
 | 🎹 Piano | C-D-E → C-G → one octave → two octaves (playable keyboard, ear training, copy-the-tune) | early music |
 | 🇪🇸 Spanish | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 | 🇫🇷 French | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
@@ -77,8 +78,15 @@ The engine (`js/engine.js`):
 
 ## Multiple children
 
-Each child gets their own **profile** (avatar + name) with fully separate stats, levels and
-learned method preferences. **The whole app re-colours itself to match the chosen avatar**
+Each child gets their own **profile** (avatar + name + **age band**) with fully separate stats,
+levels and learned method preferences. The age band — **🐣 2–4+** or **🦁 4–7+** — is chosen when
+the profile is created and can be changed any time in the Parent Dashboard. The 2–4+ band keeps
+things gentle: levels are capped per skill (counting to 20 with one more/one less and number
+ordering, adding to 10, wordless/Pink-band reading, 2D shapes, patterns & odd-one-out
+reasoning — the academic core of UK **4+ school-readiness assessments**) and stretch modules
+like fractions stay hidden.
+Progress is never lost when switching bands — higher stored levels simply wait until the child
+moves up to 4–7+. **The whole app re-colours itself to match the chosen avatar**
 (🦊 orange, 🐰 pink, 🐸 green, 🐧 blue…) — buttons, titles, highlights and even the
 installed app's title-bar colour — and you see a live preview while picking the avatar.
 On first launch the app asks who is learning; tap "👋 Bye" on the home screen to switch. Profiles can be added, renamed, re-avatared, switched and
