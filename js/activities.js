@@ -653,8 +653,24 @@ function genReading(level, method) {
 }
 
 // ---------- fractions (7+ stretch) ----------
-// Pie visual: conic-gradient fills exactly the fraction — no ambiguity.
-const fracPie = f => `<span class="frac-pie" style="--fill:${Math.round(f * 100)}%"></span>`;
+// Flat fraction circle: the circle is divided into EQUAL slices with clear
+// dividing lines, and the fraction's slices are shaded pink — so children can
+// literally count the parts (denominator) and the shaded parts (numerator),
+// exactly like the plastic fraction circles used in UK classrooms.
+const fracPie = s => {
+  const [n, d] = s.split('/').map(Number);
+  const r = 46, cx = 50, cy = 50;
+  let paths = '';
+  for (let i = 0; i < d; i++) {
+    const a0 = (-90 + (i * 360) / d) * Math.PI / 180;
+    const a1 = (-90 + ((i + 1) * 360) / d) * Math.PI / 180;
+    const x0 = (cx + r * Math.cos(a0)).toFixed(2), y0 = (cy + r * Math.sin(a0)).toFixed(2);
+    const x1 = (cx + r * Math.cos(a1)).toFixed(2), y1 = (cy + r * Math.sin(a1)).toFixed(2);
+    const large = 360 / d > 180 ? 1 : 0;
+    paths += `<path d="M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z" fill="${i < n ? '#e84393' : '#ffffff'}" stroke="#c9c3d4" stroke-width="2"/>`;
+  }
+  return `<svg class="frac-pie" viewBox="0 0 100 100" width="72" height="72" role="img">${paths}<circle cx="50" cy="50" r="46" fill="none" stroke="#9a93aa" stroke-width="3"/></svg>`;
+};
 // Stacked fraction notation with a vinculum line, like real 7+ papers.
 const fracTxt = s => {
   const [n, d] = s.split('/');
@@ -671,14 +687,14 @@ function genFractions(level, method) {
     return {
       type: 'match',
       prompt: { text: 'Match each fraction to its pie!', speak: 'Match the fractions to the pies.' },
-      pairs: three.map(n => ({ left: { html: fracTxt(n) }, right: { html: fracPie(FRACTION_META[n].f) } })),
+      pairs: three.map(n => ({ left: { html: fracTxt(n) }, right: { html: fracPie(n) } })),
     };
   }
   if (method === 'play') {
     const others = names.filter(n => n !== target);
     const tiles = shuffle([
-      ...[0, 1, 2].map(() => ({ html: fracPie(FRACTION_META[target].f), match: true })),
-      ...Array.from({ length: 6 }, () => ({ html: fracPie(FRACTION_META[pick(others)].f), match: false })),
+      ...[0, 1, 2].map(() => ({ html: fracPie(target), match: true })),
+      ...Array.from({ length: 6 }, () => ({ html: fracPie(pick(others)), match: false })),
     ]);
     return {
       type: 'hunt',
@@ -691,7 +707,7 @@ function genFractions(level, method) {
   const prompt = method === 'look'
     ? { html: `<div class="big-letter" style="font-size:3rem">${fracTxt(target)}</div>`, text: 'Tap the matching pie!', speak: `Tap the pie that shows ${FRACTION_META[target].s}.` }
     : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the pie!', speak: `Tap the pie that shows ${FRACTION_META[target].s}.` };
-  return { type: 'choice', prompt, options: opts.map(n => ({ html: fracPie(FRACTION_META[n].f), value: n })), answer: target };
+  return { type: 'choice', prompt, options: opts.map(n => ({ html: fracPie(n), value: n })), answer: target };
 }
 
 function genFractionEquiv(method) {

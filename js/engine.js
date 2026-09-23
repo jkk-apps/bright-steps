@@ -84,6 +84,23 @@ export let state = load();
 export function save() { store.setItem(KEY, JSON.stringify(state)); }
 export function resetAll() { state = fresh(); save(); }
 
+// Is this a plausible Bright Steps backup file?
+export function isValidBackup(data) {
+  return !!(data && typeof data === 'object' && data.profiles && typeof data.profiles === 'object'
+    && !Array.isArray(data.profiles));
+}
+
+// Replace ALL local data with an imported backup (moving to a new device).
+export function replaceState(data) {
+  state = {
+    active: data.active || null,
+    profiles: data.profiles || {},
+    settings: { override: null, voiceName: null, ...(data.settings || {}) },
+  };
+  if (!state.profiles[state.active]) state.active = Object.keys(state.profiles)[0] || null;
+  save();
+}
+
 // ---------------- profiles ----------------
 export function listProfiles() { return Object.values(state.profiles); }
 export function activeProfile() { return state.profiles[state.active] || null; }

@@ -289,12 +289,8 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
     #fff3d6;
 }
 
-/* fractions: pie visual + stacked notation with vinculum */
-.frac-pie {
-  display: inline-block; width: 72px; height: 72px; border-radius: 50%;
-  border: 3px solid rgba(0,0,0,.15);
-  background: conic-gradient(#e84393 0 var(--fill, 50%), #f3eef7 var(--fill, 50%) 100%);
-}
+/* fractions: flat sliced circles (SVG, drawn in activities.js) + stacked notation with vinculum */
+.frac-pie { display: inline-block; vertical-align: middle; }
 .option .frac-pie, .match-card .frac-pie { display: block; margin: 0 auto; }
 .frac { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; line-height: 1.05; font-weight: 700; }
 .frac span:first-child { border-bottom: 3px solid currentColor; padding: 0 6px; }

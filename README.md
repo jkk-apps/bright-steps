@@ -112,6 +112,11 @@ It sits behind a **parent gate**: a deliberately plain grey "🔒 Grown-ups" lin
 big colourful buttons, not grey text) followed by a 3-second press-and-hold screen. Destructive
 actions (delete profile, reset all) also ask for confirmation.
 
+**Backup & move device:** the dashboard can **export all progress** (every child, stats, levels,
+stickers and certificates) to a single JSON file, and **import** it on another phone or tablet —
+send it via AirDrop, email or Files. Importing replaces everything on the current device (with a
+confirmation prompt), and invalid files are rejected safely.
+
 ## Project structure
 
 ```
@@ -129,7 +134,7 @@ bright-steps.html single-file build (open this to play)
 
 ## Roadmap ideas
 
-- Backend sync (accounts, cross-device progress)
+- Backend sync (accounts, cross-device progress — currently manual via dashboard export/import)
 - Response-time tracking per method
 - More book bands (White → Gold) and trickier-word teaching
 - Piano: black keys / sharps & flats level, famous nursery tunes to copy

@@ -314,12 +314,8 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
     #fff3d6;
 }
 
-/* fractions: pie visual + stacked notation with vinculum */
-.frac-pie {
-  display: inline-block; width: 72px; height: 72px; border-radius: 50%;
-  border: 3px solid rgba(0,0,0,.15);
-  background: conic-gradient(#e84393 0 var(--fill, 50%), #f3eef7 var(--fill, 50%) 100%);
-}
+/* fractions: flat sliced circles (SVG, drawn in activities.js) + stacked notation with vinculum */
+.frac-pie { display: inline-block; vertical-align: middle; }
 .option .frac-pie, .match-card .frac-pie { display: block; margin: 0 auto; }
 .frac { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; line-height: 1.05; font-weight: 700; }
 .frac span:first-child { border-bottom: 3px solid currentColor; padding: 0 6px; }
@@ -702,6 +698,23 @@ function load() {
 let state = load();
 function save() { store.setItem(KEY, JSON.stringify(state)); }
 function resetAll() { state = fresh(); save(); }
+
+// Is this a plausible Bright Steps backup file?
+function isValidBackup(data) {
+  return !!(data && typeof data === 'object' && data.profiles && typeof data.profiles === 'object'
+    && !Array.isArray(data.profiles));
+}
+
+// Replace ALL local data with an imported backup (moving to a new device).
+function replaceState(data) {
+  state = {
+    active: data.active || null,
+    profiles: data.profiles || {},
+    settings: { override: null, voiceName: null, ...(data.settings || {}) },
+  };
+  if (!state.profiles[state.active]) state.active = Object.keys(state.profiles)[0] || null;
+  save();
+}
 
 // ---------------- profiles ----------------
 function listProfiles() { return Object.values(state.profiles); }
@@ -2058,8 +2071,24 @@ function genReading(level, method) {
 }
 
 // ---------- fractions (7+ stretch) ----------
-// Pie visual: conic-gradient fills exactly the fraction — no ambiguity.
-const fracPie = f => `<span class="frac-pie" style="--fill:${Math.round(f * 100)}%"></span>`;
+// Flat fraction circle: the circle is divided into EQUAL slices with clear
+// dividing lines, and the fraction's slices are shaded pink — so children can
+// literally count the parts (denominator) and the shaded parts (numerator),
+// exactly like the plastic fraction circles used in UK classrooms.
+const fracPie = s => {
+  const [n, d] = s.split('/').map(Number);
+  const r = 46, cx = 50, cy = 50;
+  let paths = '';
+  for (let i = 0; i < d; i++) {
+    const a0 = (-90 + (i * 360) / d) * Math.PI / 180;
+    const a1 = (-90 + ((i + 1) * 360) / d) * Math.PI / 180;
+    const x0 = (cx + r * Math.cos(a0)).toFixed(2), y0 = (cy + r * Math.sin(a0)).toFixed(2);
+    const x1 = (cx + r * Math.cos(a1)).toFixed(2), y1 = (cy + r * Math.sin(a1)).toFixed(2);
+    const large = 360 / d > 180 ? 1 : 0;
+    paths += `<path d="M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z" fill="${i < n ? '#e84393' : '#ffffff'}" stroke="#c9c3d4" stroke-width="2"/>`;
+  }
+  return `<svg class="frac-pie" viewBox="0 0 100 100" width="72" height="72" role="img">${paths}<circle cx="50" cy="50" r="46" fill="none" stroke="#9a93aa" stroke-width="3"/></svg>`;
+};
 // Stacked fraction notation with a vinculum line, like real 7+ papers.
 const fracTxt = s => {
   const [n, d] = s.split('/');
@@ -2076,14 +2105,14 @@ function genFractions(level, method) {
     return {
       type: 'match',
       prompt: { text: 'Match each fraction to its pie!', speak: 'Match the fractions to the pies.' },
-      pairs: three.map(n => ({ left: { html: fracTxt(n) }, right: { html: fracPie(FRACTION_META[n].f) } })),
+      pairs: three.map(n => ({ left: { html: fracTxt(n) }, right: { html: fracPie(n) } })),
     };
   }
   if (method === 'play') {
     const others = names.filter(n => n !== target);
     const tiles = shuffle([
-      ...[0, 1, 2].map(() => ({ html: fracPie(FRACTION_META[target].f), match: true })),
-      ...Array.from({ length: 6 }, () => ({ html: fracPie(FRACTION_META[pick(others)].f), match: false })),
+      ...[0, 1, 2].map(() => ({ html: fracPie(target), match: true })),
+      ...Array.from({ length: 6 }, () => ({ html: fracPie(pick(others)), match: false })),
     ]);
     return {
       type: 'hunt',
@@ -2096,7 +2125,7 @@ function genFractions(level, method) {
   const prompt = method === 'look'
     ? { html: `<div class="big-letter" style="font-size:3rem">${fracTxt(target)}</div>`, text: 'Tap the matching pie!', speak: `Tap the pie that shows ${FRACTION_META[target].s}.` }
     : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the pie!', speak: `Tap the pie that shows ${FRACTION_META[target].s}.` };
-  return { type: 'choice', prompt, options: opts.map(n => ({ html: fracPie(FRACTION_META[n].f), value: n })), answer: target };
+  return { type: 'choice', prompt, options: opts.map(n => ({ html: fracPie(n), value: n })), answer: target };
 }
 
 function genFractionEquiv(method) {
@@ -3634,6 +3663,16 @@ function renderDashboard() {
       </p>
     </div>
     ${cards}
+    <div class="dash-card">
+      <div class="dash-head"><span class="icon">💾</span><span class="name">Backup &amp; move device</span></div>
+      <p class="dash-note">All progress is stored only on this device. To move every child to a new
+        phone or tablet: <b>export</b> here, send the file to the new device (AirDrop, email, Files…),
+        open Bright Steps there, then <b>import</b>.</p>
+      <div class="btn-row" style="justify-content:flex-start;margin-top:10px">
+        <button class="btn small secondary" id="exportBtn">⬇️ Export progress</button>
+        <button class="btn small secondary" id="importBtn">⬆️ Import progress</button>
+      </div>
+    </div>
     <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>`;
 
   document.getElementById('homeBtn').onclick = () => nav('home');
@@ -3696,6 +3735,42 @@ function renderDashboard() {
   });
   document.getElementById('resetBtn').onclick = () => {
     if (confirm('Reset EVERYTHING — all children, progress and statistics?')) { resetAll(); renderDashboard(); }
+  };
+
+  // ---- backup: export all progress as a JSON file / import it on another device ----
+  document.getElementById('exportBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bright-steps-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  document.getElementById('importBtn').onclick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        let data;
+        try { data = JSON.parse(reader.result); } catch { data = null; }
+        if (!isValidBackup(data)) {
+          alert('That file does not look like a Bright Steps backup — nothing was changed.');
+          return;
+        }
+        if (!confirm('This replaces ALL progress on this device with the backup file. Continue?')) return;
+        replaceState(data);
+        setVoicePreference(state.settings.voiceName || null);
+        renderDashboard();
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 }
 

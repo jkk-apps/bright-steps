@@ -4,7 +4,8 @@ import {
   state, save, resetAll,
   listProfiles, activeProfile, addProfile, switchProfile, updateProfile, removeProfile,
   overallAccuracy, getLevel, skillAccuracy, skillAnswered, methodRate, bestMethod,
-  isSkillVisible, profileBand, skillMax, METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
+  isSkillVisible, profileBand, skillMax, isValidBackup, replaceState,
+  METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
 } from './engine.js';
 import { startSession, renderPianoFreePlay } from './activities.js';
 import { speak, getVoices, setVoicePreference, onVoicesChanged, isHighQuality } from './speech.js';
@@ -378,6 +379,16 @@ export function renderDashboard() {
       </p>
     </div>
     ${cards}
+    <div class="dash-card">
+      <div class="dash-head"><span class="icon">💾</span><span class="name">Backup &amp; move device</span></div>
+      <p class="dash-note">All progress is stored only on this device. To move every child to a new
+        phone or tablet: <b>export</b> here, send the file to the new device (AirDrop, email, Files…),
+        open Bright Steps there, then <b>import</b>.</p>
+      <div class="btn-row" style="justify-content:flex-start;margin-top:10px">
+        <button class="btn small secondary" id="exportBtn">⬇️ Export progress</button>
+        <button class="btn small secondary" id="importBtn">⬆️ Import progress</button>
+      </div>
+    </div>
     <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>`;
 
   document.getElementById('homeBtn').onclick = () => nav('home');
@@ -440,5 +451,41 @@ export function renderDashboard() {
   });
   document.getElementById('resetBtn').onclick = () => {
     if (confirm('Reset EVERYTHING — all children, progress and statistics?')) { resetAll(); renderDashboard(); }
+  };
+
+  // ---- backup: export all progress as a JSON file / import it on another device ----
+  document.getElementById('exportBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bright-steps-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  document.getElementById('importBtn').onclick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        let data;
+        try { data = JSON.parse(reader.result); } catch { data = null; }
+        if (!isValidBackup(data)) {
+          alert('That file does not look like a Bright Steps backup — nothing was changed.');
+          return;
+        }
+        if (!confirm('This replaces ALL progress on this device with the backup file. Continue?')) return;
+        replaceState(data);
+        setVoicePreference(state.settings.voiceName || null);
+        renderDashboard();
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 }
