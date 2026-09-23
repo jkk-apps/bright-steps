@@ -1,6 +1,9 @@
 # 🌈 Bright Steps — Learn Your Way
 
-An adaptive early-years learning web app for children aged **4–7**, aligned to **UK EYFS / KS1**.
+An adaptive early-years learning web app for children aged **4–7**, aligned to **UK EYFS / KS1** —
+with upper levels that stretch to **7+ entrance-assessment standard** (Year 3/4 content: arithmetic
+to 1,000, all times tables to 12×12, equivalent fractions, multi-step word problems, Orange–Purple
+book-band comprehension, and verbal/non-verbal reasoning).
 
 ## Quick start
 
@@ -33,12 +36,14 @@ standalone display, offline caching via `sw.js`):
 
 | Skill | Levels | UK alignment |
 |---|---|---|
-| 🔢 Number recognition | 1–5 → 0–9 → 10–20 → tens → 0–100 | EYFS / Year 1 |
-| ➕ Maths | + to 5 → + to 10 → − to 10 → ± to 20 → ×2,5,10 → ÷2,5,10 → missing numbers | KS1 |
+| 🔢 Number recognition | 1–5 → 0–9 → 10–20 → tens → 0–100 → hundreds to 1,000 | EYFS / Year 1 → Year 3 |
+| ➕ Maths | + to 5 → + to 10 → − to 10 → ± to 20 → ×2,5,10 → ÷2,5,10 → missing numbers → ± to 100 → ± to 1,000 → ×3,4,6 → ×7–12 → ÷ any table → mixed review → money problems → measure & two-step problems | KS1 → 7+ stretch (Y3/Y4) |
 | 🔤 Letter recognition | s a t p i n → cumulative Phase 2 sets → full alphabet → case matching | Phonics Phase 2 |
 | 📖 SATPIN words | satpin-only CVC → Phase 2 CVC → Phase 3 digraphs → Phase 4 blends | Phonics Phases 2–4 |
 | 🎨 Colours | 4 → 8 → 11 colours → reading colour words | EYFS |
-| 📚 Reading | Lilac (wordless) → Pink → Red → Yellow → Blue → Green | UK book bands |
+| 📚 Reading | Lilac (wordless) → Pink → Red → Yellow → Blue → Green → Orange → Turquoise → Purple (upper bands add inference & vocabulary questions) | UK book bands → 7+ comprehension |
+| 🍕 Fractions | halves & quarters → thirds → equivalent fractions (1/2 = 2/4 = 3/6…) | Year 2 → 7+ |
+| 🧠 Reasoning | shape patterns → odd one out → picture analogies → number/letter sequences & codes | 7+ verbal & non-verbal |
 | 🎹 Piano | C-D-E → C-G → one octave → two octaves (playable keyboard, ear training, copy-the-tune) | early music |
 | 🇪🇸 Spanish | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
 | 🇫🇷 French | greetings → numbers 1-10 → colours → animals → food (native TTS voices) | early MFL |
@@ -95,7 +100,7 @@ js/
   data.js         curriculum content: skills, levels, words, book bands
   engine.js       adaptivity: stats, method weighting, level progression
   speech.js       Web Speech API wrapper
-  activities.js   question generators (6 skills × 4 methods) + session runner
+  activities.js   question generators (11 skills × 4 methods) + session runner
   screens.js      home screen + parent dashboard
   main.js         routing/bootstrap
 bright-steps.html single-file build (open this to play)
@@ -105,7 +110,7 @@ bright-steps.html single-file build (open this to play)
 
 - Backend sync (accounts, cross-device progress)
 - Response-time tracking per method
-- More book bands (Orange → White) and trickier-word teaching
+- More book bands (White → Gold) and trickier-word teaching
 - Piano: black keys / sharps & flats level, famous nursery tunes to copy
 - Languages: phrase-of-the-day, more themes (family, clothes, days)
 - Recordable adult voice instead of TTS

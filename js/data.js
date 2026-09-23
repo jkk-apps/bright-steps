@@ -4,12 +4,26 @@
 
 export const SKILLS = {
   numbers: {
-    id: 'numbers', name: 'Numbers', icon: '🔢', colour: '#ff9f43', maxLevel: 5,
-    levelNames: ['1 to 5', '0 to 9', '10 to 20', 'Tens to 100', '0 to 100'],
+    id: 'numbers', name: 'Numbers', icon: '🔢', colour: '#ff9f43', maxLevel: 6,
+    levelNames: ['1 to 5', '0 to 9', '10 to 20', 'Tens to 100', '0 to 100', 'Hundreds to 1000'],
   },
   maths: {
-    id: 'maths', name: 'Maths', icon: '➕', colour: '#ee5253', maxLevel: 7,
-    levelNames: ['Adding to 5', 'Adding to 10', 'Taking away to 10', 'Add & take to 20', 'Times 2, 5, 10', 'Divide by 2, 5, 10', 'Missing numbers'],
+    id: 'maths', name: 'Maths', icon: '➕', colour: '#ee5253', maxLevel: 15,
+    levelNames: [
+      'Adding to 5', 'Adding to 10', 'Taking away to 10', 'Add & take to 20',
+      'Times 2, 5, 10', 'Divide by 2, 5, 10', 'Missing numbers',
+      // 7+ stretch (end Y3 / early Y4):
+      'Add & take to 100', 'Add & take to 1000', 'Times 3, 4 & 6', 'Times 7 to 12',
+      'Divide to 12', 'Mixed maths review', 'Money problems', 'Measure & two-step problems',
+    ],
+  },
+  fractions: {
+    id: 'fractions', name: 'Fractions', icon: '🍕', colour: '#e84393', maxLevel: 3,
+    levelNames: ['halves & quarters', 'thirds & parts', 'equivalent fractions'],
+  },
+  reasoning: {
+    id: 'reasoning', name: 'Reasoning', icon: '🧠', colour: '#ff6b81', maxLevel: 4,
+    levelNames: ['patterns', 'odd one out', 'analogies', 'sequences & codes'],
   },
   letters: {
     id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
@@ -24,8 +38,8 @@ export const SKILLS = {
     levelNames: ['4 colours', '8 colours', '11 colours', 'colour words'],
   },
   reading: {
-    id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 6,
-    levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band'],
+    id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 9,
+    levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band', 'Orange band', 'Turquoise band', 'Purple band'],
   },
   piano: {
     id: 'piano', name: 'Piano', icon: '🎹', colour: '#845ef2', maxLevel: 4,
@@ -304,4 +318,100 @@ export const READING_BANDS = [
       { text: 'The queen wore a shiny crown and a green coat.', q: 'What did the queen wear?', opts: ['👑', '🧢', '🧤'], a: 0 },
     ],
   },
+  // 7+ stretch: Year 2 bands introduce INFERENCE (reading between the lines)
+  // and word-meaning questions, like real comprehension papers.
+  {
+    level: 7, band: 'Orange',
+    items: [
+      { text: 'Mia packed her umbrella and her boots before she left.', q: 'What was the weather like?', opts: ['🌧️', '☀️', '🌈'], a: 0 },
+      { text: 'The dog hid under the bed when the thunder crashed.', q: 'How did the dog feel?', opts: ['😨', '😄', '😋'], a: 0 },
+      { text: 'Ava put on her scarf, her hat and her gloves.', q: 'What season is it?', opts: ['❄️', '🌞', '🌷'], a: 0 },
+      { text: 'Kofi licked his lips when he saw the birthday cake.', q: 'How did Kofi feel?', opts: ['😋', '😴', '😰'], a: 0 },
+      { text: 'Gran smiled as she opened the little card from Ruby.', q: 'How did Gran feel?', opts: ['😊', '😠', '😨'], a: 0 },
+    ],
+  },
+  {
+    level: 8, band: 'Turquoise',
+    items: [
+      { text: 'The twins looked identical, so even their teacher mixed them up.', q: 'What does “identical” mean?', opts: ['the same', 'different', 'funny'], a: 0, wordOpts: true },
+      { text: 'Sam tiptoed past the sleeping baby.', q: 'Who did Sam not want to wake?', opts: ['👶', '🐶', '👵'], a: 0 },
+      { text: 'Lena’s wellies were muddy and her coat was soaked.', q: 'Where had Lena been playing?', opts: ['🌧️', '🛏️', '🏫'], a: 0 },
+      { text: 'The museum was enormous — Max could not see everything in one day.', q: 'What does “enormous” mean?', opts: ['very big', 'very old', 'very dark'], a: 0, wordOpts: true },
+      { text: 'Aisha was exhausted after swimming fifty lengths of the pool.', q: 'What does “exhausted” mean?', opts: ['very tired', 'very fast', 'very cold'], a: 0, wordOpts: true },
+    ],
+  },
+  {
+    level: 9, band: 'Purple',
+    items: [
+      { text: 'Kofi held the tiny shell in his palm. It shimmered like a rainbow.', q: 'What does “shimmered” mean?', opts: ['shone', 'hid', 'broke'], a: 0, wordOpts: true },
+      { text: 'The whole class cheered when Mr Hill announced a trip to the zoo.', q: 'Why did the class cheer?', opts: ['🦁', '📚', '🧹'], a: 0 },
+      { text: 'Without a torch, the cave was pitch black.', q: 'What does “pitch black” mean?', opts: ['very dark', 'very noisy', 'very cold'], a: 0, wordOpts: true },
+      { text: 'Amara stared at her wobbly tooth. She did not want to pull it out.', q: 'How did Amara feel?', opts: ['😰', '😄', '😋'], a: 0 },
+      { text: 'The parcel was so fragile that Dad carried it with two hands.', q: 'What does “fragile” mean?', opts: ['breaks easily', 'very heavy', 'brand new'], a: 0, wordOpts: true },
+    ],
+  },
+];
+
+// ---------------- fractions (7+ stretch: Y2–Y3) ----------------
+// f = decimal fill of the pie visual; s = spoken name for TTS.
+export const FRACTION_META = {
+  '1/4': { f: 0.25, s: 'one quarter' },
+  '1/2': { f: 0.5, s: 'one half' },
+  '3/4': { f: 0.75, s: 'three quarters' },
+  '1/3': { f: 1 / 3, s: 'one third' },
+  '2/3': { f: 2 / 3, s: 'two thirds' },
+  '2/4': { f: 0.5, s: 'two quarters' },
+  '3/6': { f: 0.5, s: 'three sixths' },
+  '4/8': { f: 0.5, s: 'four eighths' },
+  '2/6': { f: 1 / 3, s: 'two sixths' },
+  '2/8': { f: 0.25, s: 'two eighths' },
+  '6/8': { f: 0.75, s: 'six eighths' },
+  '4/6': { f: 2 / 3, s: 'four sixths' },
+};
+// Levels 1–2 use pie visuals with DISTINCT fill amounts so there is never ambiguity.
+export const FRACTION_LEVELS = {
+  1: ['1/4', '1/2', '3/4'],
+  2: ['1/4', '1/3', '1/2', '2/3', '3/4'],
+};
+// Level 3: equivalent pairs (the actual 7+ skill).
+export const FRACTION_EQUIV = [
+  ['1/2', '2/4'], ['1/2', '3/6'], ['1/2', '4/8'],
+  ['1/3', '2/6'], ['1/4', '2/8'], ['3/4', '6/8'], ['2/3', '4/6'],
+];
+
+// ---------------- reasoning (7+ verbal & non-verbal) ----------------
+// Named shapes so patterns can be spoken aloud.
+export const REASON_SHAPES = [
+  { e: '🔴', n: 'red circle' }, { e: '🟠', n: 'orange circle' },
+  { e: '🟡', n: 'yellow circle' }, { e: '🟢', n: 'green circle' },
+  { e: '🔵', n: 'blue circle' }, { e: '🟣', n: 'purple circle' },
+  { e: '⭐', n: 'star' }, { e: '❤️', n: 'heart' },
+];
+
+// Level 2: odd one out (odd is always the LAST entry in items).
+export const ODD_ONE_OUT = [
+  { items: ['🍎', '🍌', '🍇', '🐶'], names: 'apple, banana, grapes, dog' },
+  { items: ['🚗', '🚌', '🚲', '🍕'], names: 'car, bus, bike, pizza' },
+  { items: ['🐱', '🐶', '🐰', '🌳'], names: 'cat, dog, rabbit, tree' },
+  { items: ['⚽', '🏀', '🎾', '🎸'], names: 'football, basketball, tennis ball, guitar' },
+  { items: ['🥛', '🧃', '💧', '🍞'], names: 'milk, juice, water, bread' },
+  { items: ['👟', '🥾', '🧦', '🧤'], names: 'shoe, boot, sock, glove' },
+  { items: ['🦁', '🐯', '🐘', '🐟'], names: 'lion, tiger, elephant, fish' },
+  { items: ['🌞', '⭐', '🌙', '🍎'], names: 'sun, star, moon, apple' },
+];
+
+// Things that belong together — used for match rounds in reasoning.
+export const GO_TOGETHER = [
+  ['🐶', '🦴'], ['🐱', '🐟'], ['🐰', '🥕'], ['🐝', '🍯'], ['🐦', '🪺'], ['🐔', '🥚'],
+  ['🌧️', '☂️'], ['❄️', '🧥'], ['✏️', '📖'], ['🦷', '🪥'], ['⚽', '🥅'], ['🔒', '🔑'],
+];
+
+// Level 3: picture analogies. strip is shown; qSpeak is read aloud.
+export const ANALOGIES = [
+  { strip: '🐶 ➜ 🦴 &nbsp;•&nbsp; 🐱 ➜ ?', qSpeak: 'A dog loves a bone. What does a cat love?', ans: '🐟', opts: ['🐟', '🧀', '⚽'] },
+  { strip: '🐦 ➜ 🪺 &nbsp;•&nbsp; 🐝 ➜ ?', qSpeak: 'A bird makes a nest. What does a bee make?', ans: '🍯', opts: ['🍯', '🏠', '🚗'] },
+  { strip: '🌧️ ➜ ☂️ &nbsp;•&nbsp; ❄️ ➜ ?', qSpeak: 'When it rains, we use an umbrella. What do we wear when it snows?', ans: '🧥', opts: ['🧥', '🕶️', '🩴'] },
+  { strip: '✋ ➜ 🧤 &nbsp;•&nbsp; 🦶 ➜ ?', qSpeak: 'A glove goes on a hand. What goes on a foot?', ans: '🧦', opts: ['🧦', '🎩', '👑'] },
+  { strip: '🐄 ➜ 🥛 &nbsp;•&nbsp; 🐔 ➜ ?', qSpeak: 'A cow gives us milk. What does a hen give us?', ans: '🥚', opts: ['🥚', '🍞', '🧀'] },
+  { strip: '🌱 ➜ 🌳 &nbsp;•&nbsp; 🥚 ➜ ?', qSpeak: 'A seed grows into a tree. What hatches from an egg?', ans: '🐔', opts: ['🐔', '🍳', '🐟'] },
 ];

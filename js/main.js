@@ -2,6 +2,7 @@
 import { renderHome, renderDashboard, renderProfiles } from './screens.js';
 import { speak, stopSpeak, setVoicePreference } from './speech.js';
 import { state, save } from './engine.js';
+import { unlockAudio } from './audio.js';
 
 // Apply the saved voice choice (parent dashboard) before anything speaks.
 // The picker only offers Daniel, downloaded Enhanced/Premium voices, or the
@@ -38,6 +39,10 @@ if (typeof document !== 'undefined') {
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('gesturechange', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+  // Wake/unlock the audio context on every touch — iOS can suspend or interrupt
+  // it (especially after text-to-speech), and a gesture is the way to revive it.
+  document.addEventListener('pointerdown', unlockAudio);
 
   renderHome();
 }

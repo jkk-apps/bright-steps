@@ -58,10 +58,10 @@ h1.app-title {
 .smart-btn { display: block; margin: 0 auto 20px; font-size: 1.3rem; padding: 16px 34px; border-radius: 20px; }
 
 /* home */
-.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .skill-card {
   background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0) 45%), var(--c, var(--theme));
-  color: #fff; border-radius: 26px; padding: 26px 20px 20px;
+  color: #fff; border-radius: 20px; padding: 18px 12px 14px;
   cursor: pointer; text-align: center;
   /* chunky 3D button: dark base layer + soft drop shadow */
   box-shadow: 0 6px 0 rgba(0,0,0,.17), 0 14px 24px rgba(0,0,0,.10);
@@ -82,13 +82,13 @@ h1.app-title {
   box-shadow: 0 2px 0 rgba(0,0,0,.17), 0 5px 10px rgba(0,0,0,.10);
 }
 .skill-icon {
-  font-size: 2.7rem; line-height: 1; width: 76px; height: 76px; margin: 0 auto;
+  font-size: 2rem; line-height: 1; width: 58px; height: 58px; margin: 0 auto;
   background: rgba(255,255,255,.24); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   box-shadow: inset 0 2px 5px rgba(255,255,255,.35);
 }
-.skill-name { font-size: 1.5rem; font-weight: bold; margin: 8px 0 3px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
-.skill-level { color: rgba(255,255,255,.92); font-size: .95rem; }
+.skill-name { font-size: 1.15rem; font-weight: bold; margin: 6px 0 2px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.skill-level { color: rgba(255,255,255,.92); font-size: .8rem; }
 .parent-link { text-align: center; margin-top: 26px; }
 /* deliberately plain + grey so children aren't drawn to it */
 .parent-gate-link { background: none; border: none; cursor: pointer; font-family: inherit; color: #9a9aa5; font-size: .95rem; text-decoration: underline; padding: 10px; }
@@ -226,6 +226,11 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
 .piano.free { height: 300px; margin-top: 18px; max-width: 620px; }
 .piano.free .piano-key { font-size: 2rem; padding-bottom: 20px; }
 .free-piano-row { text-align: center; margin-top: 24px; }
+/* always-on reminder for grown-ups: phone must be set to ring for sound */
+.sound-note { text-align: center; color: #8a8699; font-size: .9rem; margin: 14px auto 0; max-width: 420px; }
+/* shown only when a key tap produced no audio (device muted/interrupted) */
+.sound-hint { display: none; text-align: center; color: #c47b12; font-size: .95rem; font-weight: 500; margin: 12px auto 0; max-width: 420px; }
+.sound-hint.show { display: block; }
 .mini-spk { width: 40px; height: 40px; font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; margin-left: 8px; vertical-align: middle; }
 .opt-word { vertical-align: middle; }
 
@@ -239,6 +244,26 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
   padding: 3px 6px; margin: 3px; background: #fff8ec;
 }
 .ones-group { display: inline-block; margin: 3px; }
+/* 10×10 "hundred flat" place-value block (numbers level 6) */
+.hundred-flat {
+  display: inline-block; width: 52px; height: 52px; margin: 3px; vertical-align: middle;
+  border-radius: 8px; border: 2px solid #e0a92f;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 4.2px, rgba(224,169,47,.55) 4.2px 5.2px),
+    repeating-linear-gradient(90deg, transparent 0 4.2px, rgba(224,169,47,.55) 4.2px 5.2px),
+    #fff3d6;
+}
+
+/* fractions: pie visual + stacked notation with vinculum */
+.frac-pie {
+  display: inline-block; width: 72px; height: 72px; border-radius: 50%;
+  border: 3px solid rgba(0,0,0,.15);
+  background: conic-gradient(#e84393 0 var(--fill, 50%), #f3eef7 var(--fill, 50%) 100%);
+}
+.option .frac-pie, .match-card .frac-pie { display: block; margin: 0 auto; }
+.frac { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; line-height: 1.05; font-weight: 700; }
+.frac span:first-child { border-bottom: 3px solid currentColor; padding: 0 6px; }
+.frac-option { display: inline-flex; align-items: center; justify-content: center; }
 
 /* pre-reader friendly end-of-game buttons: icon-first, colour-coded */
 .again-big, .home-big { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 34px; border-radius: 26px; }

@@ -83,10 +83,10 @@ h1.app-title {
 .smart-btn { display: block; margin: 0 auto 20px; font-size: 1.3rem; padding: 16px 34px; border-radius: 20px; }
 
 /* home */
-.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .skill-card {
   background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0) 45%), var(--c, var(--theme));
-  color: #fff; border-radius: 26px; padding: 26px 20px 20px;
+  color: #fff; border-radius: 20px; padding: 18px 12px 14px;
   cursor: pointer; text-align: center;
   /* chunky 3D button: dark base layer + soft drop shadow */
   box-shadow: 0 6px 0 rgba(0,0,0,.17), 0 14px 24px rgba(0,0,0,.10);
@@ -107,13 +107,13 @@ h1.app-title {
   box-shadow: 0 2px 0 rgba(0,0,0,.17), 0 5px 10px rgba(0,0,0,.10);
 }
 .skill-icon {
-  font-size: 2.7rem; line-height: 1; width: 76px; height: 76px; margin: 0 auto;
+  font-size: 2rem; line-height: 1; width: 58px; height: 58px; margin: 0 auto;
   background: rgba(255,255,255,.24); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   box-shadow: inset 0 2px 5px rgba(255,255,255,.35);
 }
-.skill-name { font-size: 1.5rem; font-weight: bold; margin: 8px 0 3px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
-.skill-level { color: rgba(255,255,255,.92); font-size: .95rem; }
+.skill-name { font-size: 1.15rem; font-weight: bold; margin: 6px 0 2px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.skill-level { color: rgba(255,255,255,.92); font-size: .8rem; }
 .parent-link { text-align: center; margin-top: 26px; }
 /* deliberately plain + grey so children aren't drawn to it */
 .parent-gate-link { background: none; border: none; cursor: pointer; font-family: inherit; color: #9a9aa5; font-size: .95rem; text-decoration: underline; padding: 10px; }
@@ -251,6 +251,11 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
 .piano.free { height: 300px; margin-top: 18px; max-width: 620px; }
 .piano.free .piano-key { font-size: 2rem; padding-bottom: 20px; }
 .free-piano-row { text-align: center; margin-top: 24px; }
+/* always-on reminder for grown-ups: phone must be set to ring for sound */
+.sound-note { text-align: center; color: #8a8699; font-size: .9rem; margin: 14px auto 0; max-width: 420px; }
+/* shown only when a key tap produced no audio (device muted/interrupted) */
+.sound-hint { display: none; text-align: center; color: #c47b12; font-size: .95rem; font-weight: 500; margin: 12px auto 0; max-width: 420px; }
+.sound-hint.show { display: block; }
 .mini-spk { width: 40px; height: 40px; font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; margin-left: 8px; vertical-align: middle; }
 .opt-word { vertical-align: middle; }
 
@@ -264,6 +269,26 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
   padding: 3px 6px; margin: 3px; background: #fff8ec;
 }
 .ones-group { display: inline-block; margin: 3px; }
+/* 10×10 "hundred flat" place-value block (numbers level 6) */
+.hundred-flat {
+  display: inline-block; width: 52px; height: 52px; margin: 3px; vertical-align: middle;
+  border-radius: 8px; border: 2px solid #e0a92f;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 4.2px, rgba(224,169,47,.55) 4.2px 5.2px),
+    repeating-linear-gradient(90deg, transparent 0 4.2px, rgba(224,169,47,.55) 4.2px 5.2px),
+    #fff3d6;
+}
+
+/* fractions: pie visual + stacked notation with vinculum */
+.frac-pie {
+  display: inline-block; width: 72px; height: 72px; border-radius: 50%;
+  border: 3px solid rgba(0,0,0,.15);
+  background: conic-gradient(#e84393 0 var(--fill, 50%), #f3eef7 var(--fill, 50%) 100%);
+}
+.option .frac-pie, .match-card .frac-pie { display: block; margin: 0 auto; }
+.frac { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; line-height: 1.05; font-weight: 700; }
+.frac span:first-child { border-bottom: 3px solid currentColor; padding: 0 6px; }
+.frac-option { display: inline-flex; align-items: center; justify-content: center; }
 
 /* pre-reader friendly end-of-game buttons: icon-first, colour-coded */
 .again-big, .home-big { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 34px; border-radius: 26px; }
@@ -326,7 +351,7 @@ input.name-input, select { font-family: inherit; font-size: 1.05rem; padding: 10
 <body>
   <div id="app" class="app"></div>
   <script>
-// ===== speech.js =====
+// ===== js/speech.js =====
 // Web Speech API wrapper — prefers a soft female voice; parents can override
 // the choice from the dashboard (stored per device in settings).
 
@@ -466,7 +491,7 @@ function stopSpeak() {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 }
 
-// ===== audio.js =====
+// ===== js/audio.js =====
 // Web Audio: gentle piano-like tones for the piano module.
 // Two oscillators (fundamental + soft octave harmonic) with a plucked envelope.
 
@@ -478,14 +503,35 @@ function audioCtx() {
   if (!AC) return null;
   try {
     ctx = ctx || new AC();
-    if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   } catch { return null; }
 }
 
-function playNote(freq, dur = 0.8) {
+// Ask iOS to treat our audio like music playback, so it still sounds when the
+// phone's silent/mute switch is on (supported iOS 17+, ignored elsewhere).
+if (typeof navigator !== 'undefined' && 'audioSession' in navigator) {
+  try { navigator.audioSession.type = 'playback'; } catch { /* unsupported */ }
+}
+
+// iOS can leave the context 'interrupted' or 'suspended' — especially after
+// text-to-speech has run — so always resume first, and only schedule the note
+// once the context is actually running.
+function whenRunning(fn) {
   const c = audioCtx();
   if (!c) return;
+  if (c.state === 'running') { fn(c); return; }
+  c.resume().then(() => { if (c.state === 'running') fn(c); }).catch(() => {});
+}
+
+// Warm up the audio context on any user touch so autoplay policies are
+// satisfied before the first note needs to play.
+function unlockAudio() { whenRunning(() => {}); }
+
+// Is audio actually able to produce sound right now? (Used for the free-play
+// "no sound" hint when the device is muted/interrupted.)
+function audioReady() { return !!ctx && ctx.state === 'running'; }
+
+function scheduleNote(c, freq, dur) {
   try {
     const t = c.currentTime;
     const gain = c.createGain();
@@ -512,12 +558,16 @@ function playNote(freq, dur = 0.8) {
   } catch { /* audio unavailable — ignore */ }
 }
 
+function playNote(freq, dur = 0.8) {
+  whenRunning(c => scheduleNote(c, freq, dur));
+}
+
 // Play a little tune: array of frequencies spaced by `gap` ms
 function playNotes(freqs, gap = 600) {
   freqs.forEach((f, i) => setTimeout(() => playNote(f), i * gap));
 }
 
-// ===== engine.js =====
+// ===== js/engine.js =====
 // Adaptive engine: multiple child profiles, each with its own stats and
 // progress. Tracks success per skill per learning method, chooses methods
 // weighted by success (with exploration), and moves levels up/down.
@@ -733,19 +783,33 @@ function skillAnswered(skill) {
   return activeProfile()?.progress[skill]?.answered || 0;
 }
 
-// ===== data.js =====
+// ===== js/data.js =====
 // ---------------------------------------------------------------------------
 // Content: skills, levels and learning material (aligned to UK EYFS / KS1).
 // ---------------------------------------------------------------------------
 
 const SKILLS = {
   numbers: {
-    id: 'numbers', name: 'Numbers', icon: '🔢', colour: '#ff9f43', maxLevel: 5,
-    levelNames: ['1 to 5', '0 to 9', '10 to 20', 'Tens to 100', '0 to 100'],
+    id: 'numbers', name: 'Numbers', icon: '🔢', colour: '#ff9f43', maxLevel: 6,
+    levelNames: ['1 to 5', '0 to 9', '10 to 20', 'Tens to 100', '0 to 100', 'Hundreds to 1000'],
   },
   maths: {
-    id: 'maths', name: 'Maths', icon: '➕', colour: '#ee5253', maxLevel: 7,
-    levelNames: ['Adding to 5', 'Adding to 10', 'Taking away to 10', 'Add & take to 20', 'Times 2, 5, 10', 'Divide by 2, 5, 10', 'Missing numbers'],
+    id: 'maths', name: 'Maths', icon: '➕', colour: '#ee5253', maxLevel: 15,
+    levelNames: [
+      'Adding to 5', 'Adding to 10', 'Taking away to 10', 'Add & take to 20',
+      'Times 2, 5, 10', 'Divide by 2, 5, 10', 'Missing numbers',
+      // 7+ stretch (end Y3 / early Y4):
+      'Add & take to 100', 'Add & take to 1000', 'Times 3, 4 & 6', 'Times 7 to 12',
+      'Divide to 12', 'Mixed maths review', 'Money problems', 'Measure & two-step problems',
+    ],
+  },
+  fractions: {
+    id: 'fractions', name: 'Fractions', icon: '🍕', colour: '#e84393', maxLevel: 3,
+    levelNames: ['halves & quarters', 'thirds & parts', 'equivalent fractions'],
+  },
+  reasoning: {
+    id: 'reasoning', name: 'Reasoning', icon: '🧠', colour: '#ff6b81', maxLevel: 4,
+    levelNames: ['patterns', 'odd one out', 'analogies', 'sequences & codes'],
   },
   letters: {
     id: 'letters', name: 'Letters', icon: '🔤', colour: '#10ac84', maxLevel: 6,
@@ -760,8 +824,8 @@ const SKILLS = {
     levelNames: ['4 colours', '8 colours', '11 colours', 'colour words'],
   },
   reading: {
-    id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 6,
-    levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band'],
+    id: 'reading', name: 'Reading', icon: '📚', colour: '#2e86de', maxLevel: 9,
+    levelNames: ['Lilac band', 'Pink band', 'Red band', 'Yellow band', 'Blue band', 'Green band', 'Orange band', 'Turquoise band', 'Purple band'],
   },
   piano: {
     id: 'piano', name: 'Piano', icon: '🎹', colour: '#845ef2', maxLevel: 4,
@@ -1040,9 +1104,105 @@ const READING_BANDS = [
       { text: 'The queen wore a shiny crown and a green coat.', q: 'What did the queen wear?', opts: ['👑', '🧢', '🧤'], a: 0 },
     ],
   },
+  // 7+ stretch: Year 2 bands introduce INFERENCE (reading between the lines)
+  // and word-meaning questions, like real comprehension papers.
+  {
+    level: 7, band: 'Orange',
+    items: [
+      { text: 'Mia packed her umbrella and her boots before she left.', q: 'What was the weather like?', opts: ['🌧️', '☀️', '🌈'], a: 0 },
+      { text: 'The dog hid under the bed when the thunder crashed.', q: 'How did the dog feel?', opts: ['😨', '😄', '😋'], a: 0 },
+      { text: 'Ava put on her scarf, her hat and her gloves.', q: 'What season is it?', opts: ['❄️', '🌞', '🌷'], a: 0 },
+      { text: 'Kofi licked his lips when he saw the birthday cake.', q: 'How did Kofi feel?', opts: ['😋', '😴', '😰'], a: 0 },
+      { text: 'Gran smiled as she opened the little card from Ruby.', q: 'How did Gran feel?', opts: ['😊', '😠', '😨'], a: 0 },
+    ],
+  },
+  {
+    level: 8, band: 'Turquoise',
+    items: [
+      { text: 'The twins looked identical, so even their teacher mixed them up.', q: 'What does “identical” mean?', opts: ['the same', 'different', 'funny'], a: 0, wordOpts: true },
+      { text: 'Sam tiptoed past the sleeping baby.', q: 'Who did Sam not want to wake?', opts: ['👶', '🐶', '👵'], a: 0 },
+      { text: 'Lena’s wellies were muddy and her coat was soaked.', q: 'Where had Lena been playing?', opts: ['🌧️', '🛏️', '🏫'], a: 0 },
+      { text: 'The museum was enormous — Max could not see everything in one day.', q: 'What does “enormous” mean?', opts: ['very big', 'very old', 'very dark'], a: 0, wordOpts: true },
+      { text: 'Aisha was exhausted after swimming fifty lengths of the pool.', q: 'What does “exhausted” mean?', opts: ['very tired', 'very fast', 'very cold'], a: 0, wordOpts: true },
+    ],
+  },
+  {
+    level: 9, band: 'Purple',
+    items: [
+      { text: 'Kofi held the tiny shell in his palm. It shimmered like a rainbow.', q: 'What does “shimmered” mean?', opts: ['shone', 'hid', 'broke'], a: 0, wordOpts: true },
+      { text: 'The whole class cheered when Mr Hill announced a trip to the zoo.', q: 'Why did the class cheer?', opts: ['🦁', '📚', '🧹'], a: 0 },
+      { text: 'Without a torch, the cave was pitch black.', q: 'What does “pitch black” mean?', opts: ['very dark', 'very noisy', 'very cold'], a: 0, wordOpts: true },
+      { text: 'Amara stared at her wobbly tooth. She did not want to pull it out.', q: 'How did Amara feel?', opts: ['😰', '😄', '😋'], a: 0 },
+      { text: 'The parcel was so fragile that Dad carried it with two hands.', q: 'What does “fragile” mean?', opts: ['breaks easily', 'very heavy', 'brand new'], a: 0, wordOpts: true },
+    ],
+  },
 ];
 
-// ===== activities.js =====
+// ---------------- fractions (7+ stretch: Y2–Y3) ----------------
+// f = decimal fill of the pie visual; s = spoken name for TTS.
+const FRACTION_META = {
+  '1/4': { f: 0.25, s: 'one quarter' },
+  '1/2': { f: 0.5, s: 'one half' },
+  '3/4': { f: 0.75, s: 'three quarters' },
+  '1/3': { f: 1 / 3, s: 'one third' },
+  '2/3': { f: 2 / 3, s: 'two thirds' },
+  '2/4': { f: 0.5, s: 'two quarters' },
+  '3/6': { f: 0.5, s: 'three sixths' },
+  '4/8': { f: 0.5, s: 'four eighths' },
+  '2/6': { f: 1 / 3, s: 'two sixths' },
+  '2/8': { f: 0.25, s: 'two eighths' },
+  '6/8': { f: 0.75, s: 'six eighths' },
+  '4/6': { f: 2 / 3, s: 'four sixths' },
+};
+// Levels 1–2 use pie visuals with DISTINCT fill amounts so there is never ambiguity.
+const FRACTION_LEVELS = {
+  1: ['1/4', '1/2', '3/4'],
+  2: ['1/4', '1/3', '1/2', '2/3', '3/4'],
+};
+// Level 3: equivalent pairs (the actual 7+ skill).
+const FRACTION_EQUIV = [
+  ['1/2', '2/4'], ['1/2', '3/6'], ['1/2', '4/8'],
+  ['1/3', '2/6'], ['1/4', '2/8'], ['3/4', '6/8'], ['2/3', '4/6'],
+];
+
+// ---------------- reasoning (7+ verbal & non-verbal) ----------------
+// Named shapes so patterns can be spoken aloud.
+const REASON_SHAPES = [
+  { e: '🔴', n: 'red circle' }, { e: '🟠', n: 'orange circle' },
+  { e: '🟡', n: 'yellow circle' }, { e: '🟢', n: 'green circle' },
+  { e: '🔵', n: 'blue circle' }, { e: '🟣', n: 'purple circle' },
+  { e: '⭐', n: 'star' }, { e: '❤️', n: 'heart' },
+];
+
+// Level 2: odd one out (odd is always the LAST entry in items).
+const ODD_ONE_OUT = [
+  { items: ['🍎', '🍌', '🍇', '🐶'], names: 'apple, banana, grapes, dog' },
+  { items: ['🚗', '🚌', '🚲', '🍕'], names: 'car, bus, bike, pizza' },
+  { items: ['🐱', '🐶', '🐰', '🌳'], names: 'cat, dog, rabbit, tree' },
+  { items: ['⚽', '🏀', '🎾', '🎸'], names: 'football, basketball, tennis ball, guitar' },
+  { items: ['🥛', '🧃', '💧', '🍞'], names: 'milk, juice, water, bread' },
+  { items: ['👟', '🥾', '🧦', '🧤'], names: 'shoe, boot, sock, glove' },
+  { items: ['🦁', '🐯', '🐘', '🐟'], names: 'lion, tiger, elephant, fish' },
+  { items: ['🌞', '⭐', '🌙', '🍎'], names: 'sun, star, moon, apple' },
+];
+
+// Things that belong together — used for match rounds in reasoning.
+const GO_TOGETHER = [
+  ['🐶', '🦴'], ['🐱', '🐟'], ['🐰', '🥕'], ['🐝', '🍯'], ['🐦', '🪺'], ['🐔', '🥚'],
+  ['🌧️', '☂️'], ['❄️', '🧥'], ['✏️', '📖'], ['🦷', '🪥'], ['⚽', '🥅'], ['🔒', '🔑'],
+];
+
+// Level 3: picture analogies. strip is shown; qSpeak is read aloud.
+const ANALOGIES = [
+  { strip: '🐶 ➜ 🦴 &nbsp;•&nbsp; 🐱 ➜ ?', qSpeak: 'A dog loves a bone. What does a cat love?', ans: '🐟', opts: ['🐟', '🧀', '⚽'] },
+  { strip: '🐦 ➜ 🪺 &nbsp;•&nbsp; 🐝 ➜ ?', qSpeak: 'A bird makes a nest. What does a bee make?', ans: '🍯', opts: ['🍯', '🏠', '🚗'] },
+  { strip: '🌧️ ➜ ☂️ &nbsp;•&nbsp; ❄️ ➜ ?', qSpeak: 'When it rains, we use an umbrella. What do we wear when it snows?', ans: '🧥', opts: ['🧥', '🕶️', '🩴'] },
+  { strip: '✋ ➜ 🧤 &nbsp;•&nbsp; 🦶 ➜ ?', qSpeak: 'A glove goes on a hand. What goes on a foot?', ans: '🧦', opts: ['🧦', '🎩', '👑'] },
+  { strip: '🐄 ➜ 🥛 &nbsp;•&nbsp; 🐔 ➜ ?', qSpeak: 'A cow gives us milk. What does a hen give us?', ans: '🥚', opts: ['🥚', '🍞', '🧀'] },
+  { strip: '🌱 ➜ 🌳 &nbsp;•&nbsp; 🥚 ➜ ?', qSpeak: 'A seed grows into a tree. What hatches from an egg?', ans: '🐔', opts: ['🐔', '🍳', '🐟'] },
+];
+
+// ===== js/activities.js =====
 // ---------------------------------------------------------------------------
 // Activity engine: generates a question for (skill, level, method) and runs
 // sessions of rounds with feedback, stars and adaptive level changes.
@@ -1092,7 +1252,7 @@ function nav(where) {
 // ---------- shared builders ----------
 function answerOptions(ans, count = 3) {
   const set = new Set([ans]);
-  for (const d of shuffle([1, -1, 2, -2, 3, -3, 10, -10])) {
+  for (const d of shuffle([1, -1, 2, -2, 3, -3, 10, -10, 100, -100])) {
     if (set.size >= count) break;
     const v = ans + d;
     if (v >= 0 && !set.has(v)) set.add(v);
@@ -1106,9 +1266,14 @@ function answerOptions(ans, count = 3) {
 // no abstract key needed: children can see ten inside every circle and
 // simply count in tens (10, 20, 30...) then count on the ones.
 function blocksFor(n, big = false) {
-  const tens = Math.floor(n / 10), ones = n % 10;
+  const hundreds = Math.floor(n / 100);
+  const tens = Math.floor((n % 100) / 10), ones = n % 10;
   const size = big ? (n > 12 ? '1rem' : '2.6rem') : (n > 12 ? '0.7rem' : '1.3rem');
   let s = '';
+  if (hundreds) {
+    // 10×10 "hundred flats" — the place-value blocks children use at school
+    for (let i = 0; i < hundreds; i++) s += '<span class="hundred-flat"></span>';
+  }
   if (tens) {
     const emo = pick(NUM_EMOJI);
     for (let i = 0; i < tens; i++) {
@@ -1123,6 +1288,7 @@ function blocksFor(n, big = false) {
 // ---------- numbers ----------
 function numberPool(level) {
   if (level === 4) return [10, 20, 30, 40, 50, 60, 70, 80, 90];
+  if (level === 6) return [100, 200, 300, 400, 500, 600, 700, 800, 900];
   const ranges = { 1: [1, 5], 2: [0, 9], 3: [10, 20], 5: [0, 99] };
   const [a, b] = ranges[level];
   const out = [];
@@ -1186,12 +1352,47 @@ function makeEq(level) {
     b = pick([2, 5, 10]);
     const ans = rand(1, 5);
     return { a: b * ans, b, op: '÷', ans, text: `${b * ans} ÷ ${b}`, speak: `What is ${b * ans} divided by ${b}?` };
-  } else { // level 7: missing number
+  } else if (level === 7) { // missing number
     a = rand(1, 9);
     const ans = rand(1, 10 - a);
     const c = a + ans;
     if (Math.random() < 0.5) return { a, b: ans, op: '+', ans, missing: true, text: `${a} + ? = ${c}`, speak: `${a} add what makes ${c}?` };
     return { a: c, b: ans, op: '−', ans, missing: true, text: `${c} − ? = ${a}`, speak: `${c} take away what makes ${a}?` };
+  } else if (level === 8) { // 7+ stretch: ± to 100
+    if (Math.random() < 0.5) { a = rand(15, 80); b = rand(11, 99 - a); op = '+'; }
+    else { a = rand(30, 99); b = rand(11, a - 10); op = '−'; }
+  } else if (level === 9) { // ± to 1000, in tens and hundreds (mental maths)
+    const u = pick([10, 10, 100]);
+    if (Math.random() < 0.5) {
+      a = rand(2, Math.floor(900 / u)) * u;
+      b = rand(1, Math.floor((1000 - a) / u)) * u;
+      op = '+';
+    } else {
+      a = rand(3, Math.floor(990 / u)) * u;
+      b = rand(1, Math.floor((a - u) / u)) * u;
+      op = '−';
+    }
+  } else if (level === 10) { // times 3, 4, 6
+    a = pick([3, 4, 6]); b = rand(2, 9);
+    if (Math.random() < 0.5) [a, b] = [b, a];
+    op = '×';
+  } else if (level === 11) { // times 7 to 12 (up to 12×12)
+    a = pick([7, 8, 9, 11, 12]); b = rand(2, 12);
+    if (Math.random() < 0.5) [a, b] = [b, a];
+    op = '×';
+  } else if (level === 12) { // divide using any table to 12
+    b = rand(2, 12);
+    const ans = rand(2, 12);
+    return { a: b * ans, b, op: '÷', ans, text: `${b * ans} ÷ ${b}`, speak: `What is ${b * ans} divided by ${b}?` };
+  } else { // level 13: mixed review — anything from levels 8–12, plus bigger missing numbers
+    if (Math.random() < 0.3) {
+      a = rand(2, 9) * pick([1, 10]);
+      const ans = rand(2, 9) * pick([1, 10]);
+      const c = a + ans;
+      if (Math.random() < 0.5) return { a, b: ans, op: '+', ans, missing: true, text: `${a} + ? = ${c}`, speak: `${a} add what makes ${c}?` };
+      return { a: c, b: ans, op: '−', ans, missing: true, text: `${c} − ? = ${a}`, speak: `${c} take away what makes ${a}?` };
+    }
+    return makeEq(rand(8, 12));
   }
   const ans = op === '+' ? a + b : op === '−' ? a - b : a * b;
   const word = op === '+' ? 'add' : op === '−' ? 'take away' : 'times';
@@ -1212,6 +1413,7 @@ function eqVisual(e) {
 }
 
 function genMaths(level, method) {
+  if (level >= 14) return genWordProblem(level, method); // money / measure & two-step
   const eq = makeEq(level);
 
   if (method === 'look' || method === 'hear') {
@@ -1256,6 +1458,134 @@ function genMaths(level, method) {
     prompt: { speak: `Tap all the sums that make ${target}.`, text: `Tap all the sums that make ${target}!` },
     tiles: shuffle([...matchTiles, ...otherTiles]),
   };
+}
+
+// ---------- word problems (7+ style: money, measure, two-step) ----------
+const WP_NAMES = ['Sam', 'Mia', 'Lily', 'Tom', 'Ava', 'Kofi', 'Ruby', 'Max'];
+const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const WP_ITEMS = [
+  { n: 'apple' }, { n: 'lolly' }, { n: 'pencil' }, { n: 'juice box' },
+  { n: 'biscuit' }, { n: 'balloon' }, { n: 'banana' }, { n: 'sticker' },
+];
+
+// 4 answer labels: the correct one + near-value distractors, rendered by `fmt`
+function labelOptions(correct, deltas, fmt) {
+  const set = new Set([correct]);
+  for (const d of shuffle(deltas)) {
+    if (set.size >= 4) break;
+    const v = correct + d;
+    if (v > 0 && !set.has(v)) set.add(v);
+  }
+  let extra = correct + 3;
+  while (set.size < 4) { set.add(extra); extra += 3; }
+  return shuffle([...set]).map(fmt);
+}
+
+function makeMoneyProblem() {
+  const who = pick(WP_NAMES), item = pick(WP_ITEMS);
+  const kind = pick(['coins', 'change', 'many']);
+  if (kind === 'coins') {
+    const coin = pick([2, 5, 10, 20]);
+    const k = rand(2, 5);
+    const total = coin * k;
+    return {
+      story: `${who} has ${k} coins of ${coin}p. How much is that altogether?`,
+      speak: `${who} has ${NUM_WORDS[k]} ${coin} p coins. How much money is that altogether?`,
+      options: labelOptions(total, [10, -10, 5, -5, 2, -2, 20], v => `${v}p`),
+      answer: `${total}p`,
+    };
+  }
+  if (kind === 'change') {
+    const price = pick([15, 20, 25, 30, 35, 40, 60, 70]);
+    const pay = price < 50 ? 50 : 100;
+    return {
+      story: `A ${item.n} costs ${price}p. ${who} pays with ${pay === 100 ? '£1' : 'a 50p coin'}. How much change does ${who} get?`,
+      speak: `A ${item.n} costs ${price} p. ${who} pays with ${pay === 100 ? 'one pound' : 'a fifty p coin'}. How much change does ${who} get?`,
+      options: labelOptions(pay - price, [10, -10, 5, -5, 20, -20], v => `${v}p`),
+      answer: `${pay - price}p`,
+    };
+  }
+  const price = pick([10, 20, 30]);
+  const k = rand(2, 4);
+  return {
+    story: `One ${item.n} costs ${price}p. How much do ${NUM_WORDS[k]} ${item.n}s cost?`,
+    speak: `One ${item.n} costs ${price} p. How much do ${NUM_WORDS[k]} ${item.n}s cost?`,
+    options: labelOptions(price * k, [price, -price, 10, -10, 5, -5], v => `${v}p`),
+    answer: `${price * k}p`,
+  };
+}
+
+function makeMeasureProblem() {
+  const who = pick(WP_NAMES);
+  const kind = pick(['length', 'time', 'capacity', 'twostep']);
+  if (kind === 'length') {
+    const len = pick([5, 10, 20]);
+    const k = rand(2, 4);
+    return {
+      story: `A pencil is ${len} cm long. How long are ${NUM_WORDS[k]} pencils placed end to end?`,
+      speak: `A pencil is ${len} centimetres long. How long are ${NUM_WORDS[k]} pencils placed end to end?`,
+      options: labelOptions(len * k, [len, -len, 5, -5, 10, -10], v => `${v} cm`),
+      answer: `${len * k} cm`,
+    };
+  }
+  if (kind === 'time') {
+    const start = rand(1, 5);
+    const dur = pick([1, 2, 3]);
+    return {
+      story: `The film starts at ${start} o'clock. It is ${NUM_WORDS[dur]} hour${dur > 1 ? 's' : ''} long. What time does it end?`,
+      speak: `The film starts at ${start} o'clock. It is ${NUM_WORDS[dur]} hour${dur > 1 ? 's' : ''} long. What time does it end?`,
+      options: labelOptions(start + dur, [1, -1, 2, -2], v => `${v} o'clock`),
+      answer: `${start + dur} o'clock`,
+    };
+  }
+  if (kind === 'capacity') {
+    const cup = pick([100, 200, 250]);
+    return {
+      story: `A cup holds ${cup} ml. How much do two cups hold altogether?`,
+      speak: `A cup holds ${cup} millilitres. How much do two cups hold altogether?`,
+      options: labelOptions(cup * 2, [100, -100, 50, -50, cup / 2, -cup / 2], v => `${v} ml`),
+      answer: `${cup * 2} ml`,
+    };
+  }
+  // two-step: multiply then subtract — the classic 7+ extension question
+  const bags = rand(2, 4);
+  const per = pick([2, 5, 10]);
+  const eaten = rand(1, per);
+  const left = bags * per - eaten;
+  return {
+    story: `${who} has ${NUM_WORDS[bags]} bags with ${per} sweets in each bag. ${who} eats ${NUM_WORDS[eaten]} sweet${eaten > 1 ? 's' : ''}. How many sweets are left?`,
+    speak: `${who} has ${NUM_WORDS[bags]} bags with ${per} sweets in each bag. ${who} eats ${NUM_WORDS[eaten]}. How many sweets are left?`,
+    options: labelOptions(left, [1, -1, 2, -2, per, -per, 10, -10], v => `${v}`),
+    answer: `${left}`,
+  };
+}
+
+function genWordProblem(level, method) {
+  const make = level === 14 ? makeMoneyProblem : makeMeasureProblem;
+  if (method === 'match') {
+    const probs = []; const seen = new Set(); let guard = 0;
+    while (probs.length < 3 && guard++ < 200) {
+      const p = make();
+      if (!seen.has(p.story)) { seen.add(p.story); probs.push(p); }
+    }
+    return {
+      type: 'match',
+      prompt: { text: 'Match each problem to its answer!', speak: 'Listen to each problem, then match it to the answer.' },
+      pairs: probs.map(p => ({ left: { html: p.story, cls: 'sentence-mini', say: p.speak }, right: { html: p.answer } })),
+    };
+  }
+  const p = make();
+  const options = p.options.map(v => ({ html: v, value: v, cls: 'word-option' }));
+  // look + play: problem card is on screen AND read aloud (tappable to replay).
+  // hear: audio only, like a mental maths question.
+  const prompt = method === 'hear'
+    ? { html: '<div class="big-letter">👂</div>', text: 'Listen carefully, then tap the answer!', speak: p.speak }
+    : {
+        html: `<div class="sentence-card speakable" data-say="${encodeURIComponent(p.speak)}">${p.story} ${spkBtn(p.speak)}</div>`,
+        text: 'Solve the problem, then tap the answer!',
+        speak: p.speak,
+      };
+  return { type: 'choice', prompt, options, answer: p.answer };
 }
 
 // ---------- letters ----------
@@ -1430,11 +1760,14 @@ function genReading(level, method) {
     const items = sample(band.items, 3);
     return {
       type: 'match',
-      prompt: { text: 'Match each sentence to its picture!', speak: 'Read each sentence and match it to the picture.' },
-      pairs: items.map(it => ({ left: { html: it.text, cls: 'sentence-mini' }, right: { html: it.opts[it.a] } })),
+      prompt: { text: 'Match each sentence to its answer!', speak: 'Read each sentence and match it to the answer.' },
+      pairs: items.map(it => ({
+        left: { html: it.text, cls: 'sentence-mini', say: it.text },
+        right: { html: it.opts[it.a], cls: it.wordOpts ? 'sentence-mini' : '' },
+      })),
     };
   }
-  if (method === 'play') {
+  if (method === 'play' && level < 7) {
     const words = item.text.replace(/[.!?]$/, '').split(' ');
     return {
       type: 'build',
@@ -1442,7 +1775,8 @@ function genReading(level, method) {
       tiles: words, answer: words,
     };
   }
-  const options = shuffle(item.opts.map((e, i) => ({ html: e, value: i })));
+  // play at Orange+ bands falls through to a comprehension question instead
+  const options = shuffle(item.opts.map((e, i) => ({ html: e, value: i, cls: item.wordOpts ? 'word-option' : '' })));
   if (method === 'hear') {
     return {
       type: 'choice',
@@ -1457,6 +1791,225 @@ function genReading(level, method) {
     prompt: { html: `<div class="sentence-card speakable" data-say="${encodeURIComponent(item.text)}">${item.text} ${spkBtn(item.text)}</div>`, text: item.q, speak: item.q },
     options, answer: item.a,
   };
+}
+
+// ---------- fractions (7+ stretch) ----------
+// Pie visual: conic-gradient fills exactly the fraction — no ambiguity.
+const fracPie = f => `<span class="frac-pie" style="--fill:${Math.round(f * 100)}%"></span>`;
+// Stacked fraction notation with a vinculum line, like real 7+ papers.
+const fracTxt = s => {
+  const [n, d] = s.split('/');
+  return `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+};
+
+function genFractions(level, method) {
+  if (level === 3) return genFractionEquiv(method);
+  const names = FRACTION_LEVELS[level];
+  const target = pick(names);
+
+  if (method === 'match') {
+    const three = sample(names, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match each fraction to its pie!', speak: 'Match the fractions to the pies.' },
+      pairs: three.map(n => ({ left: { html: fracTxt(n) }, right: { html: fracPie(FRACTION_META[n].f) } })),
+    };
+  }
+  if (method === 'play') {
+    const others = names.filter(n => n !== target);
+    const tiles = shuffle([
+      ...[0, 1, 2].map(() => ({ html: fracPie(FRACTION_META[target].f), match: true })),
+      ...Array.from({ length: 6 }, () => ({ html: fracPie(FRACTION_META[pick(others)].f), match: false })),
+    ]);
+    return {
+      type: 'hunt',
+      prompt: { speak: `Tap all the pies showing ${FRACTION_META[target].s}.`, text: `Tap all the ${target}s!` },
+      tiles,
+    };
+  }
+  // look: notation shown; hear: spoken only. Both choose the matching pie.
+  const opts = shuffle([target, ...sample(names.filter(n => n !== target), 2)]);
+  const prompt = method === 'look'
+    ? { html: `<div class="big-letter" style="font-size:3rem">${fracTxt(target)}</div>`, text: 'Tap the matching pie!', speak: `Tap the pie that shows ${FRACTION_META[target].s}.` }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the pie!', speak: `Tap the pie that shows ${FRACTION_META[target].s}.` };
+  return { type: 'choice', prompt, options: opts.map(n => ({ html: fracPie(FRACTION_META[n].f), value: n })), answer: target };
+}
+
+function genFractionEquiv(method) {
+  const pair = pick(FRACTION_EQUIV);
+  const [a, b] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
+  const all = [...new Set(FRACTION_EQUIV.flat())];
+  const wrongPool = all.filter(n => n !== a && n !== b && FRACTION_META[n].f !== FRACTION_META[a].f);
+
+  if (method === 'match') {
+    const three = sample(FRACTION_EQUIV, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match the fractions that are equal!', speak: 'Match the fractions that mean the same amount.' },
+      pairs: three.map(p => {
+        const [x, y] = Math.random() < 0.5 ? p : [p[1], p[0]];
+        return { left: { html: fracTxt(x) }, right: { html: fracTxt(y) } };
+      }),
+    };
+  }
+  if (method === 'play') {
+    const equals = all.filter(n => FRACTION_META[n].f === FRACTION_META[a].f);
+    const tiles = shuffle([
+      ...sample(equals, Math.min(3, equals.length)).map(n => ({ html: fracTxt(n), match: true })),
+      ...sample(wrongPool, 6).map(n => ({ html: fracTxt(n), match: false })),
+    ]);
+    return {
+      type: 'hunt',
+      prompt: { speak: `Tap every fraction equal to ${FRACTION_META[a].s}.`, text: `Tap all the fractions equal to ${a}!` },
+      tiles,
+    };
+  }
+  const options = shuffle([b, ...sample(wrongPool, 2)]).map(n => ({ html: fracTxt(n), value: n, cls: 'frac-option' }));
+  const prompt = method === 'look'
+    ? { html: `<div class="big-letter" style="font-size:2.6rem">${fracTxt(a)} = ?</div>`, text: 'Tap the fraction that is equal!', speak: `Which fraction equals ${FRACTION_META[a].s}?` }
+    : { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap!', speak: `Tap the fraction that equals ${FRACTION_META[a].s}.` };
+  return { type: 'choice', prompt, options, answer: b };
+}
+
+// ---------- reasoning (7+ verbal & non-verbal) ----------
+function makePattern() {
+  const unit = sample(REASON_SHAPES, pick([2, 2, 3]));
+  const strip = [...unit, ...unit, ...unit.slice(0, rand(0, unit.length - 1))];
+  const next = unit[strip.length % unit.length];
+  return { strip, next, unit };
+}
+
+function genPattern(method) {
+  if (method === 'match') {
+    const pats = [makePattern(), makePattern(), makePattern()];
+    return {
+      type: 'match',
+      prompt: { text: 'Match each pattern to what comes next!', speak: 'Say each pattern, then match it to the shape that comes next.' },
+      pairs: pats.map(p => ({ left: { html: p.strip.map(s => s.e).join(' '), cls: 'sentence-mini' }, right: { html: p.next.e } })),
+    };
+  }
+  if (method === 'play') {
+    // build the next TWO items of the pattern from tiles
+    // (build questions require tiles to be exactly the answer pieces — no distractors)
+    const p = makePattern();
+    const n2 = p.unit[(p.strip.length + 1) % p.unit.length];
+    const tiles = shuffle([p.next, n2]).map(s => s.e);
+    return {
+      type: 'build',
+      prompt: {
+        html: `<div class="emoji-row">${p.strip.map(s => s.e).join(' ')} <b>➜ ?</b></div>`,
+        text: 'Build the next two!',
+        speak: `${p.strip.map(s => s.n).join(', ')}. Tap the next two shapes.`,
+      },
+      tiles, answer: [p.next.e, n2.e],
+    };
+  }
+  const p = makePattern();
+  const options = shuffle([p.next, ...sample(REASON_SHAPES.filter(s => s !== p.next), 2)])
+    .map(s => ({ html: s.e, value: s.e }));
+  const prompt = method === 'hear'
+    ? { html: '<div class="big-letter">👂</div>', text: 'Listen to the pattern!', speak: `${p.strip.map(s => s.n).join(', ')}. What comes next?` }
+    : { html: `<div class="emoji-row">${p.strip.map(s => s.e).join(' ')} <b>➜ ?</b></div>`, text: 'What comes next?', speak: `${p.strip.map(s => s.n).join(', ')}. What comes next?` };
+  return { type: 'choice', prompt, options, answer: p.next.e };
+}
+
+function genOddOneOut(method) {
+  if (method === 'match') {
+    const pairs = sample(GO_TOGETHER, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match the things that go together!', speak: 'Match the things that go together.' },
+      pairs: pairs.map(([a, b]) => ({ left: { html: a }, right: { html: b } })),
+    };
+  }
+  const set = pick(ODD_ONE_OUT);
+  const oddIdx = set.items.length - 1; // odd item is always stored last
+  if (method === 'play') {
+    const same = set.items.slice(0, oddIdx);
+    const tiles = shuffle([
+      { html: set.items[oddIdx], match: true },
+      ...Array.from({ length: 8 }, () => ({ html: pick(same), match: false })),
+    ]);
+    return { type: 'hunt', prompt: { speak: 'Tap the one that does not belong!', text: 'Tap the odd one out!' }, tiles };
+  }
+  const options = shuffle(set.items.map((e, i) => ({ html: e, value: i })));
+  const prompt = method === 'hear'
+    ? { html: '<div class="big-letter">👂</div>', text: 'Listen, then tap the odd one out!', speak: `${set.names}. Which one does not belong?` }
+    : { html: `<div class="emoji-row">${set.items.join(' ')}</div>`, text: 'Tap the odd one out!', speak: `${set.names}. Tap the odd one out.` };
+  return { type: 'choice', prompt, options, answer: oddIdx };
+}
+
+function genAnalogy(method) {
+  if (method === 'match') {
+    const pairs = sample(GO_TOGETHER, 3);
+    return {
+      type: 'match',
+      prompt: { text: 'Match the things that belong together!', speak: 'Match the things that belong together.' },
+      pairs: pairs.map(([a, b]) => ({ left: { html: a }, right: { html: b } })),
+    };
+  }
+  const an = pick(ANALOGIES);
+  const options = shuffle(an.opts).map(e => ({ html: e, value: e }));
+  const prompt = method === 'hear'
+    ? { html: '<div class="big-letter">👂</div>', text: 'Listen carefully!', speak: an.qSpeak }
+    : { html: `<div class="big-letter" style="font-size:2.4rem">${an.strip}</div>`, text: 'What finishes it?', speak: an.qSpeak };
+  return { type: 'choice', prompt, options, answer: an.ans };
+}
+
+function makeSequence() {
+  const A = 'abcdefghijklmnopqrstuvwxyz';
+  const kind = pick(['num', 'num', 'let', 'code']);
+  if (kind === 'let') {
+    const step = pick([1, 2]);
+    const start = rand(0, 26 - 4 * step - 1);
+    const strip = [0, 1, 2, 3].map(i => A[start + i * step]);
+    const next = A[start + 4 * step];
+    const near = A.split('').filter(l => l !== next && Math.abs(A.indexOf(l) - (start + 4 * step)) <= 3);
+    return {
+      html: strip.join(' , '), speakText: strip.join(', '),
+      options: shuffle([next, ...sample(near, 2)]).map(l => ({ html: l, value: l, cls: 'word-option' })),
+      answer: next,
+    };
+  }
+  if (kind === 'code') {
+    const idx = rand(2, 7); // C .. H
+    const letter = A[idx].toUpperCase();
+    return {
+      html: `A=1 , B=2 , C=3 … ${letter}=?`,
+      speakText: `If A is 1, B is 2 and C is 3, what number is ${letter}?`,
+      options: answerOptions(idx + 1), answer: idx + 1,
+      plainSpeak: true,
+    };
+  }
+  const step = pick([2, 3, 5, 10]);
+  const start = rand(1, 10);
+  const strip = [0, 1, 2, 3].map(i => start + i * step);
+  const next = start + 4 * step;
+  return { html: strip.join(' , '), speakText: strip.join(', '), options: answerOptions(next), answer: next };
+}
+
+function genSequence(method) {
+  if (method === 'match') {
+    const seqs = [makeSequence(), makeSequence(), makeSequence()];
+    return {
+      type: 'match',
+      prompt: { text: 'Match each sequence to what comes next!', speak: 'Match each sequence to what comes next.' },
+      pairs: seqs.map(s => ({ left: { html: s.html, cls: 'sentence-mini' }, right: { html: `${s.answer}` } })),
+    };
+  }
+  const s = makeSequence();
+  const sayText = s.plainSpeak ? s.speakText : `What comes next: ${s.speakText}?`;
+  const prompt = method === 'hear'
+    ? { html: '<div class="big-letter">👂</div>', text: 'What comes next?', speak: sayText }
+    : { html: `<div class="big-letter" style="font-size:2.2rem">${s.html} <b>➜ ?</b></div>`, text: 'What comes next?', speak: sayText };
+  return { type: 'choice', prompt, options: s.options, answer: s.answer };
+}
+
+function genReasoning(level, method) {
+  if (level === 1) return genPattern(method);
+  if (level === 2) return genOddOneOut(method);
+  if (level === 3) return genAnalogy(method);
+  return genSequence(method);
 }
 
 // ---------- dispatcher ----------
@@ -1581,8 +2134,10 @@ function genPiano(level, method) {
 
 function generateRound(skillId, level, method) {
   switch (skillId) {
-    case 'numbers': return genNumbers(level, method);
-    case 'maths':   return genMaths(level, method);
+    case 'numbers':   return genNumbers(level, method);
+    case 'maths':     return genMaths(level, method);
+    case 'fractions': return genFractions(level, method);
+    case 'reasoning': return genReasoning(level, method);
     case 'letters': return genLetters(level, method);
     case 'words':   return genWords(level, method);
     case 'colours': return genColours(level, method);
@@ -1869,7 +2424,9 @@ function renderPianoFreePlay() {
     <div class="prompt"><div class="prompt-text">Tap the keys and make some music!</div></div>
     <div class="piano free">
       ${keys.map((k, i) => `<div class="piano-key" data-i="${i}" style="background:${k.colour};color:${NOTE_TEXT[k.n]}">${k.n}</div>`).join('')}
-    </div>`;
+    </div>
+    <p class="sound-note">🔔 Make sure the phone is set to <b>ring</b> (not silent) and the volume is up, so you can hear the notes.</p>
+    <p class="sound-hint" id="soundHint">🔇 No sound? Check the device's silent/mute switch and volume.</p>`;
 
   // pure music-making: no voice-over on key presses, just the note itself
   app.querySelectorAll('.piano-key').forEach(el => {
@@ -1878,6 +2435,11 @@ function renderPianoFreePlay() {
       playNote(k.freq);
       el.classList.add('hit');
       setTimeout(() => el.classList.remove('hit'), 300);
+      // if audio still isn't running after the tap, the device is probably muted — tell the grown-up
+      setTimeout(() => {
+        const hint = document.getElementById('soundHint');
+        if (hint) hint.classList.toggle('show', !audioReady());
+      }, 400);
     };
   });
   document.getElementById('homeBtn').onclick = () => nav('home');
@@ -2007,7 +2569,7 @@ function starRain() {
   }
 }
 
-// ===== screens.js =====
+// ===== js/screens.js =====
 // Screens: profile picker, profile creation, home, parent dashboard.
 const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2378,7 +2940,7 @@ function renderDashboard() {
   };
 }
 
-// ===== main.js =====
+// ===== js/main.js =====
 // App entry point: routing + global speaker-button handling.
 // Apply the saved voice choice (parent dashboard) before anything speaks.
 // The picker only offers Daniel, downloaded Enhanced/Premium voices, or the
@@ -2415,6 +2977,10 @@ if (typeof document !== 'undefined') {
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('gesturechange', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+  // Wake/unlock the audio context on every touch — iOS can suspend or interrupt
+  // it (especially after text-to-speech), and a gesture is the way to revive it.
+  document.addEventListener('pointerdown', unlockAudio);
 
   renderHome();
 }
