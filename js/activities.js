@@ -1773,7 +1773,8 @@ function showFeedback(correct, change, cb) {
 }
 
 // Milestone certificate: full-screen, screenshot-friendly, then back to the summary.
-function renderCertificate(cert, cb) {
+// Also used read-only from the Parent Dashboard (celebrate: false, custom back label).
+export function renderCertificate(cert, cb, opts = {}) {
   const app = document.getElementById('app');
   const prof = activeProfile();
   const skill = SKILLS[cert.skill];
@@ -1789,10 +1790,12 @@ function renderCertificate(cert, cb) {
       <div class="cert-award">Level ${cert.level} · ${skill.levelNames[cert.level - 1]}</div>
       <div class="cert-text">in ${skill.icon} ${skill.name}</div>
       <div class="cert-date">${date}</div>
-      <div class="btn-row"><button class="btn" id="certOk">🎉 Hooray!</button></div>
+      <div class="btn-row"><button class="btn" id="certOk">${opts.backLabel || '🎉 Hooray!'}</button></div>
     </div>`;
-  confetti();
-  speak(`Amazing! ${name} has reached level ${cert.level} in ${skill.name}! Here is your certificate!`);
+  if (opts.celebrate !== false) {
+    confetti();
+    speak(`Amazing! ${name} has reached level ${cert.level} in ${skill.name}! Here is your certificate!`);
+  }
   document.getElementById('certOk').onclick = cb;
 }
 

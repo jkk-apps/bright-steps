@@ -7,7 +7,7 @@ import {
   isSkillVisible, profileBand, skillMax, isValidBackup, replaceState,
   METHODS, METHOD_META, AVATARS, themeFor, DEFAULT_THEME,
 } from './engine.js';
-import { startSession, renderPianoFreePlay } from './activities.js';
+import { startSession, renderPianoFreePlay, renderCertificate } from './activities.js';
 import { speak, getVoices, setVoicePreference, onVoicesChanged, isHighQuality } from './speech.js';
 
 const esc = s => String(s).replace(/[&<>"']/g, c =>
@@ -341,10 +341,12 @@ export function renderDashboard() {
     ${prof ? `
     <div class="dash-card">
       <div class="dash-head"><span class="icon">🏅</span><span class="name">Certificates — ${prof.avatar} ${esc(prof.name || 'Unnamed')}</span></div>
-      ${(prof.certificates || []).length ? (prof.certificates || []).slice(-8).reverse().map(c => `
-        <div class="cert-row">${SKILLS[c.skill]?.icon || '⭐'} Level ${c.level} · ${SKILLS[c.skill]?.levelNames[c.level - 1] || ''}
-          <span class="profile-sub">${new Date(c.at).toLocaleDateString('en-GB')}</span>
-        </div>`).join('') : '<p class="dash-note">No certificates yet — one is earned the first time each new level is reached.</p>'}
+      ${(prof.certificates || []).length ? (prof.certificates || []).map((c, i) => ({ c, i })).slice(-8).reverse().map(({ c, i }) => `
+        <button class="cert-row" data-cert="${i}">
+          ${SKILLS[c.skill]?.icon || '⭐'} Level ${c.level} · ${SKILLS[c.skill]?.levelNames[c.level - 1] || ''}
+          <span class="profile-sub" style="margin-left:auto">${new Date(c.at).toLocaleDateString('en-GB')}</span>
+          <span class="cert-view">view ›</span>
+        </button>`).join('') : '<p class="dash-note">No certificates yet — one is earned the first time each new level is reached.</p>'}
     </div>` : ''}
     <div class="dash-card">
       <div class="settings-row">
@@ -452,6 +454,14 @@ export function renderDashboard() {
   document.getElementById('resetBtn').onclick = () => {
     if (confirm('Reset EVERYTHING — all children, progress and statistics?')) { resetAll(); renderDashboard(); }
   };
+
+  // tap a certificate row to view it full-screen (quiet mode — no confetti/speech)
+  document.querySelectorAll('[data-cert]').forEach(b => {
+    b.onclick = () => {
+      const cert = (activeProfile()?.certificates || [])[+b.dataset.cert];
+      if (cert) renderCertificate(cert, () => renderDashboard(), { celebrate: false, backLabel: '← Back to dashboard' });
+    };
+  });
 
   // ---- backup: export all progress as a JSON file / import it on another device ----
   document.getElementById('exportBtn').onclick = () => {

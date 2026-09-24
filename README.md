@@ -60,7 +60,8 @@ Finishing a game with 3+ stars earns a **sticker** for the child's **🎁 sticke
 (a perfect 5/5 earns a rare gold-glow sticker). The album lives on the home screen and shows
 faint silhouettes of what's still to collect. Reaching a level for the **first time** earns a
 **milestone certificate** — a full-screen, screenshot-friendly celebration with the child's
-name, avatar and date — and certificates are logged in the Parent Dashboard.
+name, avatar and date — and certificates are logged in the Parent Dashboard, where tapping any
+row re-opens the full certificate view (handy for screenshots and keepsakes).
 
 The piano also has a **free-play mode** (“🎹 Just play the piano” on the home screen): an open
 keyboard with the Boomwhacker colours and letter labels always on, no testing or scoring — each
