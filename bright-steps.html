@@ -286,6 +286,9 @@ button.cert-row:hover { background: var(--theme-soft); }
 .trace-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .trace-draw { touch-action: none; cursor: crosshair; }
 
+/* developer credit at the foot of the parent dashboard */
+.app-credit { text-align: center; color: #a9a4b8; font-size: .85rem; margin: 26px 0 8px; }
+
 /* sound-it-out helper button (words game) */
 .sound-out { display: inline-block; margin-top: 8px; font-family: inherit; font-size: 1rem; font-weight: bold; color: var(--theme); background: var(--theme-soft); border: none; border-radius: 999px; padding: 8px 18px; cursor: pointer; }
 /* always-on reminder for grown-ups: phone must be set to ring for sound */
@@ -3680,7 +3683,8 @@ function renderDashboard() {
         <button class="btn small secondary" id="importBtn">⬆️ Import progress</button>
       </div>
     </div>
-    <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>`;
+    <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>
+    <p class="app-credit">Bright Steps · Developed by <b>Jasmeet Kapoor</b></p>`;
 
   document.getElementById('homeBtn').onclick = () => nav('home');
   const sel = document.getElementById('overrideSel');

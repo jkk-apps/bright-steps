@@ -3278,7 +3278,8 @@ function renderDashboard() {
         <button class="btn small secondary" id="importBtn">⬆️ Import progress</button>
       </div>
     </div>
-    <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>`;
+    <div class="btn-row"><button class="btn secondary" id="resetBtn">🗑 Reset everything (all children)</button></div>
+    <p class="app-credit">Bright Steps · Developed by <b>Jasmeet Kapoor</b></p>`;
 
   document.getElementById('homeBtn').onclick = () => nav('home');
   const sel = document.getElementById('overrideSel');
